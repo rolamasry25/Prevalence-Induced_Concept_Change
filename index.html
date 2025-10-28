@@ -108,24 +108,44 @@
     function startExperiment(){
       document.getElementById('experiment').innerHTML = '<h2>Loading experiment...</h2>';
       trialIndex = 0; responses = []; stimuli = [];
-      const baseline = buildBlock({n:30, pBlue:0.5}).map(x=>({...x,prevalence:'baseline'}));
-      const low      = buildBlock({n:30, pBlue:0.10}).map(x=>({...x,prevalence:'low'}));
-      stimuli = baseline.concat(low).sort(()=>Math.random()-0.5);
-      renderTrial();
-    }
+     const BASELINE_TRIALS = 30;
+     const LOW_TRIALS = 30;
 
-    function renderTrial(){
-      const tr = stimuli[trialIndex];
-      document.getElementById('experiment').innerHTML = `
-        <div style="text-align:center">
-          <div class="circle" style="background:${tr.color};"></div>
-          <div class="flex">
-            <button class="primary-btn" onclick="recordResponse('blue')">Blue</button>
-            <button class="primary-btn" onclick="recordResponse('not-blue')">Not Blue</button>
-          </div>
-          <p class="muted" style="margin-top:.9rem;">Trial ${trialIndex+1} of ${stimuli.length}</p>
-        </div>`;
-    }
+     const baseline = buildBlock({ n: BASELINE_TRIALS, pBlue: 0.5 })
+      .map((x, i) => ({ ...x, prevalence: 'baseline', seq: i + 1 }));
+
+     const low = buildBlock({ n: LOW_TRIALS, pBlue: 0.10 })
+      .map((x, i) => ({ ...x, prevalence: 'low', seq: BASELINE_TRIALS + i + 1 }));
+
+// IMPORTANT: keep block order — baseline first, then low-prevalence
+stimuli = baseline.concat(low);
+      
+function renderTrial() {
+  const tr = stimuli[trialIndex];
+  const blockLabel = tr.prevalence === 'baseline'
+    ? 'Baseline (50% blue)'
+    : 'Low Prevalence (10% blue)';
+  const BASELINE_TRIALS = 30; // keep in sync with startExperiment
+  const blockIndex = tr.prevalence === 'baseline'
+    ? trialIndex + 1
+    : trialIndex + 1 - BASELINE_TRIALS;
+  const blockTotal = tr.prevalence === 'baseline' ? 30 : 30;
+
+  document.getElementById('experiment').innerHTML = `
+    <div style="text-align:center">
+      <div class="circle" style="background:${tr.color};"></div>
+      <div class="flex">
+        <button class="primary-btn" onclick="recordResponse('blue')">Blue</button>
+        <button class="primary-btn" onclick="recordResponse('not-blue')">Not Blue</button>
+      </div>
+      <p class="muted" style="margin-top:.9rem;">
+        Block: <strong>${blockLabel}</strong> — Trial ${blockIndex} of ${blockTotal}
+        <br/>Overall ${trialIndex + 1} / ${stimuli.length}
+      </p>
+    </div>
+  `;
+}
+
 
     function recordResponse(response){
       const tr = stimuli[trialIndex];
