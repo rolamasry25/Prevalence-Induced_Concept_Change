@@ -93,7 +93,7 @@
     </div>
   </main>
 <script>
-  const GS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxCH-XXtcAzY0rqNQDGp98bb6VtXmE6Rvo3gChvQs/exec';
+  const GS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyXSl55FXSRq8ZSwbMMtvxNGcm6FdqkrzhSHUfCf3k9W7udUHrN3WQ3KrxBv8ADSl51/exec';
 </script>
 <script>
   // ---------- Globals ----------
@@ -212,23 +212,26 @@
   }
 
   async function finishRun() {
-    const run = { run_id: makeRunId(), ts: Date.now(), trials: responses };
+  const run = { run_id: makeRunId(), ts: Date.now(), trials: responses };
 
-    // local fallback (optional)
-    try {
-      const local = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-      local.push(run);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
-    } catch {}
+  // Local backup (optional)
+  try {
+    const local = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    local.push(run);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
+  } catch {}
 
-    let msg = '';
-    try {
-      await saveRunToCloud(run);
-      msg = 'Synced to Google Sheets.';
-    } catch (e) {
-      console.warn(e);
-      msg = 'Could not sync to Google Sheets (offline?). Data saved locally.';
-    }
+  // Try to upload silently — no message shown
+  try {
+    await saveRunToCloud(run);
+  } catch (e) {
+    console.warn('Sync failed:', e);
+  }
+
+  // Instantly show the dashboard
+  showDashboard();
+}
+
 
     document.getElementById('experiment').innerHTML = `
       <h2>Experiment Complete</h2>
@@ -241,7 +244,33 @@
       </div>
     `;
 
-    refreshDashboard(); // async refresh of shared data
+    // Prefer cloud; fall back to local if cloud fails OR is empty
+async function refreshDashboard(){
+  let runsCloud = [];
+  try {
+    runsCloud = await getAllRuns();   // cloud (all devices)
+  } catch (e) {
+    console.warn('Cloud fetch failed, using local only:', e);
+  }
+
+  const runsLocal = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+  // If cloud has nothing yet, use local; otherwise merge (and de-dupe by run_id if present)
+  let runs = [];
+  if (runsCloud && runsCloud.length) {
+    const seen = new Set();
+    for (const r of runsCloud) { if (r.run_id) seen.add(r.run_id); }
+    runs = runsCloud.concat(runsLocal.filter(r => !r.run_id || !seen.has(r.run_id)));
+  } else {
+    runs = runsLocal;
+  }
+
+  const aggr = aggregate(runs);
+  renderMetrics(aggr);
+  renderBreakdowns(aggr);
+  renderChart(aggr);
+}
+
   }
 
   // ---------- CSV ----------
