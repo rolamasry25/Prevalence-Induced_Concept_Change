@@ -122,10 +122,29 @@
       <button class="primary-btn" onclick="startExperiment()">Start Experiment</button>
     </div>
 
-    <canvas id="resultChart" class="hidden"></canvas>
-    <canvas id="lineChart"></canvas>
-
     <div id="dashboard" class="card">
+      <h2>Dashboard</h2>
+      <div class="dashboard-metrics">
+        <div class="metric">
+          <h4>Total Participants</h4>
+          <h3>3</h3>
+        </div>
+        <div class="metric">
+          <h4>Overall Accuracy</h4>
+          <h3>93.9%</h3>
+        </div>
+        <div class="metric">
+          <h4>Baseline Accuracy</h4>
+          <h3>91.1%</h3>
+        </div>
+        <div class="metric">
+          <h4>Low-Prev Accuracy</h4>
+          <h3>96.7%</h3>
+        </div>
+      </div>
+
+      <canvas id="lineChart"></canvas>
+
       <h2>Response Classification Breakdown</h2>
       <div style="display: flex; justify-content: space-around; flex-wrap: wrap">
         <div>
@@ -196,11 +215,11 @@
     });
 
     function startExperiment() {
-      alert("Experiment would start now – full logic coming next");
+      console.log("Experiment logic placeholder");
     }
 
     function showDashboard() {
-      alert("Dashboard would be shown here – full logic coming next");
+      console.log("Dashboard logic placeholder");
     }
   </script>
 </body>
