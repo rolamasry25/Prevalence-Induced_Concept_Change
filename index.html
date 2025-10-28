@@ -37,11 +37,16 @@
       padding: 2rem;
     }
     .dot {
-      width: 150px;
-      height: 150px;
+      width: 250px;
+      height: 250px;
       border-radius: 50%;
       margin: 40px auto;
       box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    }
+    .button-group {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
     }
     .button-group button {
       background-color: #0d6efd;
@@ -50,7 +55,6 @@
       padding: 12px 28px;
       font-size: 16px;
       border-radius: 8px;
-      margin: 10px;
       cursor: pointer;
       transition: background-color 0.3s ease;
     }
@@ -125,185 +129,12 @@
   </main>
 
   <script>
-    const baseColors = [
-      { name: "blue", code: "#0000FF", category: true, t: 0 },
-      { name: "royalblue", code: "#4169E1", category: true, t: 0.2 },
-      { name: "mediumslateblue", code: "#7B68EE", category: true, t: 0.4 },
-      { name: "blueviolet", code: "#8A2BE2", category: false, t: 0.6 },
-      { name: "mediumorchid", code: "#BA55D3", category: false, t: 0.8 },
-      { name: "purple", code: "#800080", category: false, t: 1 }
-    ];
-
-    let trials = [];
-    let currentIndex = 0;
-    let block = 'Baseline';
-
     function startExperiment() {
-      trials = [];
-      currentIndex = 0;
-      block = 'Baseline';
-      document.getElementById('resultChart').classList.add('hidden');
-      document.getElementById('lineChart').classList.add('hidden');
-      document.getElementById('dashboard').classList.add('hidden');
-      showNext();
-    }
-
-    function showNext() {
-      if (currentIndex >= 60) {
-        showResults();
-        return;
-      }
-
-      if (currentIndex === 30) block = 'Low Prevalence';
-
-      let stimulus;
-      if (block === 'Baseline') {
-        stimulus = baseColors[Math.floor(Math.random() * baseColors.length)];
-      } else {
-        stimulus = Math.random() < 0.1
-          ? baseColors[Math.floor(Math.random() * 3)]
-          : baseColors[Math.floor(Math.random() * 3) + 3];
-      }
-
-      const container = document.getElementById('experiment');
-      container.innerHTML = `
-        <h2>Trial ${currentIndex + 1} of 60</h2>
-        <div class="dot" style="background-color: ${stimulus.code};"></div>
-        <div class="button-group">
-          <button onclick="recordResponse(true, '${stimulus.name}', ${stimulus.category}, '${block}', ${stimulus.t})">Blue</button>
-          <button onclick="recordResponse(false, '${stimulus.name}', ${stimulus.category}, '${block}', ${stimulus.t})">Not Blue</button>
-        </div>
-        <p><strong>Block:</strong> ${block}</p>
-      `;
-    }
-
-    function recordResponse(userResponse, colorName, isBlue, blockType, t) {
-      trials.push({
-        color: colorName,
-        isBlue: isBlue,
-        response: userResponse,
-        correct: userResponse === isBlue,
-        block: blockType,
-        t: t,
-        timestamp: new Date().toISOString()
-      });
-      currentIndex++;
-      showNext();
-    }
-
-    function showResults() {
-      const container = document.getElementById('experiment');
-      container.innerHTML = `<h2>Experiment complete!</h2><p>Results below:</p>`;
-
-      const ctx = document.getElementById('resultChart');
-      const ctx2 = document.getElementById('lineChart');
-      ctx.classList.remove('hidden');
-      ctx2.classList.remove('hidden');
-
-      const blocks = { Baseline: [], "Low Prevalence": [] };
-      trials.forEach(t => blocks[t.block].push(t.correct));
-
-      const baselineAcc = (blocks.Baseline.filter(x => x).length / blocks.Baseline.length) * 100;
-      const lowAcc = (blocks["Low Prevalence"].filter(x => x).length / blocks["Low Prevalence"].length) * 100;
-
-      new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: ['Baseline (50%)', 'Low Prevalence (10%)'],
-          datasets: [{
-            label: 'Accuracy (%)',
-            data: [baselineAcc, lowAcc],
-            backgroundColor: ['#0d6efd', '#800080']
-          }]
-        },
-        options: { scales: { y: { beginAtZero: true, max: 100 } } }
-      });
-
-      // Create line chart P(Blue|t)
-      const byT = { Baseline: {}, "Low Prevalence": {} };
-      trials.forEach(trial => {
-        if (!(trial.t in byT[trial.block])) byT[trial.block][trial.t] = [];
-        byT[trial.block][trial.t].push(trial.response);
-      });
-
-      const labels = [0,0.2,0.4,0.6,0.8,1];
-      const baselineData = labels.map(t => avg(byT["Baseline"][t] || []));
-      const lowPrevData = labels.map(t => avg(byT["Low Prevalence"][t] || []));
-
-      new Chart(ctx2, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [
-            { label: 'Baseline', data: baselineData, borderColor: '#0d6efd', fill: false },
-            { label: 'Low Prevalence', data: lowPrevData, borderColor: '#800080', fill: false }
-          ]
-        },
-        options: {
-          plugins: {
-            title: {
-              display: true,
-              text: 'P(judged BLUE) across color continuum (0=blue to 1=purple)'
-            }
-          },
-          scales: {
-            y: { beginAtZero: true, max: 1 },
-            x: { title: { display: true, text: 'Color t-value' } }
-          }
-        }
-      });
-
-      // Save data
-      const saved = localStorage.getItem('concept_trials') || "[]";
-      const all = JSON.parse(saved);
-      all.push(trials);
-      localStorage.setItem('concept_trials', JSON.stringify(all));
-    }
-
-    function avg(arr) {
-      if (arr.length === 0) return null;
-      return arr.filter(Boolean).length / arr.length;
+      alert("Experiment would start now – full logic coming next");
     }
 
     function showDashboard() {
-      const all = JSON.parse(localStorage.getItem('concept_trials') || "[]");
-      if (all.length === 0) return alert("No data yet.");
-
-      let total = 0, correct = 0, base = 0, baseC = 0, low = 0, lowC = 0;
-      all.forEach(sess => sess.forEach(t => {
-        total++;
-        if (t.correct) correct++;
-        if (t.block === 'Baseline') { base++; if (t.correct) baseC++; }
-        else { low++; if (t.correct) lowC++; }
-      }));
-
-      const html = `
-        <div class="dashboard-metrics">
-          <div class="metric"><div>Total Participants</div><h3>${all.length}</h3></div>
-          <div class="metric"><div>Overall Accuracy</div><h3>${(correct/total*100).toFixed(1)}%</h3></div>
-          <div class="metric"><div>Baseline Accuracy</div><h3>${(baseC/base*100).toFixed(1)}%</h3></div>
-          <div class="metric"><div>Low-Prev Accuracy</div><h3>${(lowC/low*100).toFixed(1)}%</h3></div>
-        </div>
-        <button class="primary-btn" onclick="exportCSV()">Export All Data</button>
-      `;
-      const dash = document.getElementById("dashboard");
-      dash.innerHTML = html;
-      dash.classList.remove("hidden");
-    }
-
-    function exportCSV() {
-      const all = JSON.parse(localStorage.getItem('concept_trials') || "[]");
-      const rows = [['Session','Color','IsBlue','Response','Correct','Block','t','Timestamp']];
-      all.forEach((session, sid) => session.forEach(t => rows.push([
-        sid+1, t.color, t.isBlue, t.response, t.correct, t.block, t.t, t.timestamp
-      ])));
-      const csv = "data:text/csv;charset=utf-8," + rows.map(r => r.join(",")).join("\n");
-      const link = document.createElement("a");
-      link.setAttribute("href", encodeURI(csv));
-      link.setAttribute("download", "concept_trials.csv");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      alert("Dashboard would be shown here – full logic coming next");
     }
   </script>
 </body>
