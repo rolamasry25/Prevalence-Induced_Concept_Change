@@ -29,37 +29,13 @@
       margin-left: 1rem;
       text-decoration: none;
       font-weight: 500;
+      cursor: pointer;
     }
     main {
       display: flex;
       flex-direction: column;
       align-items: center;
       padding: 2rem;
-    }
-    .dot {
-      width: 250px;
-      height: 250px;
-      border-radius: 50%;
-      margin: 40px auto;
-      box-shadow: 0 0 15px rgba(0,0,0,0.1);
-    }
-    .button-group {
-      display: flex;
-      justify-content: center;
-      gap: 20px;
-    }
-    .button-group button {
-      background-color: #0d6efd;
-      color: white;
-      border: none;
-      padding: 12px 28px;
-      font-size: 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-    .button-group button:hover {
-      background-color: #0a58ca;
     }
     .card {
       background: white;
@@ -68,13 +44,6 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       margin: 20px 0;
       width: 100%;
-      max-width: 800px;
-    }
-    .card h2 {
-      margin-top: 0;
-    }
-    canvas {
-      margin-top: 2rem;
       max-width: 800px;
     }
     .dashboard-metrics {
@@ -95,7 +64,10 @@
     .metric h3 {
       margin: 0.5rem 0;
     }
-    .hidden { display: none; }
+    canvas {
+      margin-top: 2rem;
+      max-width: 800px;
+    }
     .primary-btn {
       padding: 10px 20px;
       background: #198754;
@@ -105,14 +77,15 @@
       font-size: 16px;
       cursor: pointer;
     }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
   <nav>
     <span class="logo">🔬 Concept Change Study</span>
     <div>
-      <a href="#" onclick="startExperiment()">Experiment</a>
-      <a href="#" onclick="showDashboard()">Dashboard</a>
+      <a onclick="showExperiment()">Experiment</a>
+      <a onclick="showDashboard()">Dashboard</a>
     </div>
   </nav>
   <main>
@@ -122,7 +95,7 @@
       <button class="primary-btn" onclick="startExperiment()">Start Experiment</button>
     </div>
 
-    <div id="dashboard" class="card">
+    <div id="dashboard" class="card hidden">
       <h2>Dashboard</h2>
       <div class="dashboard-metrics">
         <div class="metric">
@@ -166,6 +139,20 @@
   </main>
 
   <script>
+    function showExperiment() {
+      document.getElementById('experiment').classList.remove('hidden');
+      document.getElementById('dashboard').classList.add('hidden');
+    }
+
+    function showDashboard() {
+      document.getElementById('dashboard').classList.remove('hidden');
+      document.getElementById('experiment').classList.add('hidden');
+    }
+
+    function startExperiment() {
+      alert("Experiment logic placeholder – actual experiment flow not yet implemented.");
+    }
+
     const ctx = document.getElementById('lineChart').getContext('2d');
     new Chart(ctx, {
       type: 'line',
@@ -213,14 +200,6 @@
         }
       }
     });
-
-    function startExperiment() {
-      console.log("Experiment logic placeholder");
-    }
-
-    function showDashboard() {
-      console.log("Dashboard logic placeholder");
-    }
   </script>
 </body>
 </html>
