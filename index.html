@@ -113,14 +113,28 @@
     document.getElementById('experiment').innerHTML = '<h2>Loading experiment...</h2>';
     trialIndex = 0; responses = []; stimuli = [];
 
-    const baseline = buildBlock({ n: BASELINE_TRIALS, pBlue: 0.5 })
-      .map((x, i) => ({ ...x, prevalence: 'baseline', seq: i + 1 }));
+    // Helper: Fisher–Yates shuffle
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
-    const low = buildBlock({ n: LOW_TRIALS, pBlue: 0.10 })
-      .map((x, i) => ({ ...x, prevalence: 'low', seq: BASELINE_TRIALS + i + 1 }));
+const baseline = buildBlock({ n: BASELINE_TRIALS, pBlue: 0.5 })
+  .map((x, i) => ({ ...x, prevalence: 'baseline', seq: i + 1 }));
 
-    // KEEP ORDER: baseline first, then low-prevalence (no shuffle)
-    stimuli = baseline.concat(low);
+const low = buildBlock({ n: LOW_TRIALS, pBlue: 0.10 })
+  .map((x, i) => ({ ...x, prevalence: 'low', seq: BASELINE_TRIALS + i + 1 }));
+
+// Shuffle each block separately, but keep block order overall
+const baselineShuffled = shuffleArray(baseline);
+const lowShuffled = shuffleArray(low);
+
+stimuli = baselineShuffled.concat(lowShuffled);
+
 
     renderTrial();
   } // <-- close startExperiment here ✅
