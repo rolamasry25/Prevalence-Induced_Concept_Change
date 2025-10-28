@@ -39,6 +39,22 @@
     }
     .hidden { display: none; }
     canvas { margin-top: 30px; }
+    #dashboardBtn {
+      background: #28a745;
+      padding: 10px 20px;
+      color: #fff;
+      border-radius: 6px;
+      border: none;
+      margin-top: 30px;
+      cursor: pointer;
+    }
+    .dashboard-section {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 10px;
+      margin: 20px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    }
   </style>
 </head>
 <body>
@@ -46,7 +62,9 @@
   <div id="experiment">
     <button onclick="startExperiment()">Start</button>
   </div>
+  <button id="dashboardBtn" onclick="showDashboard()">View Dashboard</button>
   <canvas id="resultChart" class="hidden" width="400" height="200"></canvas>
+  <div id="dashboard" class="hidden dashboard-section"></div>
 
   <script>
     const baseColors = [
@@ -67,6 +85,7 @@
       currentIndex = 0;
       block = 'Baseline';
       document.getElementById('resultChart').classList.add('hidden');
+      document.getElementById('dashboard').classList.add('hidden');
       showNext();
     }
 
@@ -103,7 +122,8 @@
         isBlue: isBlue,
         response: userResponse,
         correct: userResponse === isBlue,
-        block: blockType
+        block: blockType,
+        timestamp: new Date().toISOString()
       });
       currentIndex++;
       showNext();
@@ -142,6 +162,65 @@
       const all = JSON.parse(saved);
       all.push(trials);
       localStorage.setItem('concept_trials', JSON.stringify(all));
+    }
+
+    function showDashboard() {
+      const all = JSON.parse(localStorage.getItem('concept_trials') || "[]");
+      if (all.length === 0) {
+        alert("No data available yet.");
+        return;
+      }
+      let baselineCorrect = 0, lowCorrect = 0, baselineTotal = 0, lowTotal = 0;
+
+      all.forEach(session => {
+        session.forEach(t => {
+          if (t.block === 'Baseline') {
+            baselineTotal++;
+            if (t.correct) baselineCorrect++;
+          } else {
+            lowTotal++;
+            if (t.correct) lowCorrect++;
+          }
+        });
+      });
+
+      const accBaseline = (baselineCorrect / baselineTotal * 100).toFixed(1);
+      const accLow = (lowCorrect / lowTotal * 100).toFixed(1);
+      const dashboard = document.getElementById("dashboard");
+      dashboard.classList.remove("hidden");
+      dashboard.innerHTML = `
+        <h2>Dashboard</h2>
+        <p>Total Sessions: ${all.length}</p>
+        <p>Baseline Accuracy: ${accBaseline}%</p>
+        <p>Low Prevalence Accuracy: ${accLow}%</p>
+        <button onclick="exportCSV()">Export All Data (CSV)</button>
+      `;
+    }
+
+    function exportCSV() {
+      const all = JSON.parse(localStorage.getItem('concept_trials') || "[]");
+      const rows = [['SessionID','Color','IsBlue','Response','Correct','Block','Timestamp']];
+      all.forEach((session, index) => {
+        session.forEach(trial => {
+          rows.push([
+            index + 1,
+            trial.color,
+            trial.isBlue,
+            trial.response,
+            trial.correct,
+            trial.block,
+            trial.timestamp
+          ]);
+        });
+      });
+      const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "concept_change_data.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   </script>
 </body>
