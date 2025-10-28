@@ -1,3 +1,4 @@
+<!-- globally defined button logic -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -139,6 +140,10 @@
   </main>
 
   <script>
+    let trialIndex = 0;
+    let responses = [];
+    let stimuli = [];
+
     function showExperiment() {
       document.getElementById('experiment').classList.remove('hidden');
       document.getElementById('dashboard').classList.add('hidden');
@@ -159,72 +164,67 @@
     function startExperiment() {
       document.getElementById('experiment').innerHTML = '<h2>Loading experiment...</h2>';
 
-      let trialIndex = 0;
-      let responses = [];
-      const baselineCount = 30;
-      const lowPrevCount = 30;
-      const stimuli = [];
+      trialIndex = 0;
+      responses = [];
+      stimuli = [];
 
-      for (let i = 0; i < baselineCount; i++) {
+      for (let i = 0; i < 30; i++) {
         const t = Math.random();
         stimuli.push({ t, prevalence: 'baseline', color: generateColor(t) });
       }
-
-      for (let i = 0; i < lowPrevCount; i++) {
+      for (let i = 0; i < 30; i++) {
         const t = Math.random();
         stimuli.push({ t, prevalence: 'low', color: generateColor(t) });
       }
 
       stimuli.sort(() => Math.random() - 0.5);
-
-      function renderTrial() {
-        const trial = stimuli[trialIndex];
-        document.getElementById('experiment').innerHTML = `
-          <div style="text-align: center">
-            <div style="width: 250px; height: 250px; margin: 30px auto; border-radius: 50%; background-color: ${trial.color};"></div>
-            <div style="display: flex; justify-content: center; gap: 20px;">
-              <button onclick="recordResponse('blue')" class="primary-btn">Blue</button>
-              <button onclick="recordResponse('not-blue')" class="primary-btn">Not Blue</button>
-            </div>
-            <p style="margin-top: 1rem;">Trial ${trialIndex + 1} of ${stimuli.length}</p>
-          </div>
-        `;
-      }
-
-      window.recordResponse = function (response) {
-        responses.push({ ...stimuli[trialIndex], response });
-        trialIndex++;
-        if (trialIndex < stimuli.length) {
-          renderTrial();
-        } else {
-          showSummary();
-        }
-      };
-
-      function showSummary() {
-        document.getElementById('experiment').innerHTML = `
-          <h2>Experiment Complete</h2>
-          <p>You completed ${stimuli.length} trials.</p>
-          <button class="primary-btn" onclick="downloadCSV()">Download Results</button>
-        `;
-      }
-
-      window.downloadCSV = function () {
-        const headers = Object.keys(responses[0]);
-        const csv = [headers.join(',')].concat(
-          responses.map(obj => headers.map(h => obj[h]).join(','))
-        ).join('\n');
-
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'experiment_results.csv';
-        a.click();
-      };
-
       renderTrial();
+    }
+
+    function renderTrial() {
+      const trial = stimuli[trialIndex];
+      document.getElementById('experiment').innerHTML = `
+        <div style="text-align: center">
+          <div style="width: 250px; height: 250px; margin: 30px auto; border-radius: 50%; background-color: ${trial.color};"></div>
+          <div style="display: flex; justify-content: center; gap: 20px;">
+            <button onclick="recordResponse('blue')" class="primary-btn">Blue</button>
+            <button onclick="recordResponse('not-blue')" class="primary-btn">Not Blue</button>
+          </div>
+          <p style="margin-top: 1rem;">Trial ${trialIndex + 1} of ${stimuli.length}</p>
+        </div>
+      `;
+    }
+
+    function recordResponse(response) {
+      responses.push({ ...stimuli[trialIndex], response });
+      trialIndex++;
+      if (trialIndex < stimuli.length) {
+        renderTrial();
+      } else {
+        showSummary();
+      }
+    }
+
+    function showSummary() {
+      document.getElementById('experiment').innerHTML = `
+        <h2>Experiment Complete</h2>
+        <p>You completed ${stimuli.length} trials.</p>
+        <button class="primary-btn" onclick="downloadCSV()">Download Results</button>
+      `;
+    }
+
+    function downloadCSV() {
+      const headers = Object.keys(responses[0]);
+      const csv = [headers.join(',')].concat(
+        responses.map(obj => headers.map(h => obj[h]).join(','))
+      ).join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'experiment_results.csv';
+      a.click();
     }
 
     window.onload = function () {
