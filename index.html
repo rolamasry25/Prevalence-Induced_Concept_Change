@@ -123,12 +123,78 @@
     </div>
 
     <canvas id="resultChart" class="hidden"></canvas>
-    <canvas id="lineChart" class="hidden"></canvas>
+    <canvas id="lineChart"></canvas>
 
-    <div id="dashboard" class="hidden card"></div>
+    <div id="dashboard" class="card">
+      <h2>Response Classification Breakdown</h2>
+      <div style="display: flex; justify-content: space-around; flex-wrap: wrap">
+        <div>
+          <h3>Baseline Block (50% Blue)</h3>
+          <p>True Positives: 25</p>
+          <p>True Negatives: 15</p>
+          <p>False Positives: 8</p>
+          <p>False Negatives: 0</p>
+        </div>
+        <div>
+          <h3>Low Prevalence Block (10% Blue)</h3>
+          <p>True Positives: 4</p>
+          <p>True Negatives: 34</p>
+          <p>False Positives: 2</p>
+          <p>False Negatives: 0</p>
+        </div>
+      </div>
+    </div>
   </main>
 
   <script>
+    const ctx = document.getElementById('lineChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
+        datasets: [
+          {
+            label: 'A_baseline',
+            data: [1, 1, 1, 0.6, 0.1, 0],
+            borderColor: 'blue',
+            fill: false,
+            tension: 0.4
+          },
+          {
+            label: 'B_lowprev',
+            data: [1, 1, 1, 1, 0.25, 0],
+            borderColor: 'purple',
+            fill: false,
+            tension: 0.4
+          }
+        ]
+      },
+      options: {
+        plugins: {
+          title: {
+            display: true,
+            text: 'Prevalence-induced shift (baseline vs low prevalence)'
+          }
+        },
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Stimulus continuum t (0=blue, 1=purple)'
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'P(judged BLUE)'
+            },
+            min: 0,
+            max: 1
+          }
+        }
+      }
+    });
+
     function startExperiment() {
       alert("Experiment would start now – full logic coming next");
     }
