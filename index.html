@@ -10,13 +10,17 @@
       text-align: center;
       padding: 2rem;
     }
-    #experiment {
-      margin-top: 2rem;
+    .dot {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      margin: 20px auto;
     }
     button {
       padding: 10px 20px;
       margin: 10px;
       font-size: 1rem;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -29,13 +33,13 @@
 
   <script>
     const stimuli = [
-      { word: "Blue dot", category: true },
-      { word: "Purple dot", category: true },
-      { word: "Red dot", category: false },
-      { word: "Pink dot", category: false },
-      { word: "Dark blue dot", category: true },
-      { word: "Light purple dot", category: false },
-      { word: "Indigo dot", category: false },
+      { color: "blue", category: true },
+      { color: "purple", category: true },
+      { color: "red", category: false },
+      { color: "pink", category: false },
+      { color: "darkblue", category: true },
+      { color: "violet", category: false },
+      { color: "indigo", category: false },
     ];
 
     let currentIndex = 0;
@@ -55,7 +59,7 @@
       const current = stimuli[currentIndex];
       const div = document.querySelector("#experiment");
       div.innerHTML = `
-        <p><strong>${current.word}</strong></p>
+        <div class="dot" style="background-color: ${current.color};"></div>
         <button onclick="respond(true)">Yes</button>
         <button onclick="respond(false)">No</button>
       `;
@@ -63,7 +67,7 @@
 
     function respond(response) {
       const correct = response === stimuli[currentIndex].category;
-      console.log(`Stimulus: ${stimuli[currentIndex].word}, Response: ${response}, Correct: ${correct}`);
+      console.log(`Color: ${stimuli[currentIndex].color}, Response: ${response}, Correct: ${correct}`);
       currentIndex++;
       showNextStimulus();
     }
