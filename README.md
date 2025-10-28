@@ -5,6 +5,9 @@ This is a simple interactive experiment based on the 2018 research paper by Leva
 **What it does:**  
 Participants are shown a series of items (e.g. colored dots) and must decide whether each item belongs to a certain category. As the prevalence of items changes, we can observe if their concept boundary shifts — just like in the original psychological experiment.
 
+**Try it online**
+https://rolamasry25.github.io/Prevalence-Induced_Concept_Change/# 
+
 **Built with:**  
 - HTML  
 - JavaScript  
