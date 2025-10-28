@@ -119,7 +119,8 @@
 
 // IMPORTANT: keep block order — baseline first, then low-prevalence
 stimuli = baseline.concat(low);
-      
+      renderTrial();
+  } 
 function renderTrial() {
   const tr = stimuli[trialIndex];
   const blockLabel = tr.prevalence === 'baseline'
