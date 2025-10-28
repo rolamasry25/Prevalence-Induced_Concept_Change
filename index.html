@@ -92,241 +92,297 @@
       </div>
     </div>
   </main>
+<script>
+  const GS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxCH-XXtcAzY0rqNQDGp98bb6VtXmE6Rvo3gChvQs/exec';
+</script>
+<script>
+  // ---------- Globals ----------
+  const STORAGE_KEY = 'cc_runs_v1';
+  let trialIndex = 0;
+  let responses = [];
+  let stimuli = [];
+  let dashboardChart = null;
 
-  <script>
-    // ---------- Globals ----------
-    const STORAGE_KEY = 'cc_runs_v1';
-    let trialIndex = 0;
-    let responses = [];
-    let stimuli = [];
-    let dashboardChart = null;
+  // ---------- Nav ----------
+  function showExperiment() {
+    document.getElementById('experiment').classList.remove('hidden');
+    document.getElementById('dashboard').classList.add('hidden');
+  }
+  function showDashboard() {
+    document.getElementById('dashboard').classList.remove('hidden');
+    document.getElementById('experiment').classList.add('hidden');
+    refreshDashboard(); // async (fire-and-forget)
+  }
 
-    // ---------- Nav ----------
-    function showExperiment() {
-      document.getElementById('experiment').classList.remove('hidden');
-      document.getElementById('dashboard').classList.add('hidden');
+  // ---------- Stimuli generation ----------
+  function generateColor(t) {
+    const r = Math.round(255 * t);      // blue -> purple gradient
+    return `rgb(${r},0,255)`;
+  }
+  function buildBlock({ n, pBlue }) {
+    const nBlue = Math.round(n * pBlue);
+    const nNotBlue = n - nBlue;
+    const arr = [];
+    for (let i = 0; i < nBlue; i++) {
+      const t = Math.random() * 0.5;            // [0, 0.5]
+      arr.push({ t, color: generateColor(t) });
     }
-    function showDashboard() {
-      document.getElementById('dashboard').classList.remove('hidden');
-      document.getElementById('experiment').classList.add('hidden');
-      refreshDashboard();
+    for (let i = 0; i < nNotBlue; i++) {
+      const t = 0.5 + Math.random() * 0.5;      // (0.5, 1]
+      arr.push({ t, color: generateColor(t) });
     }
+    return arr;
+  }
+  function truthIsBlue(t) { return t <= 0.5; }
 
-    // ---------- Stimuli generation ----------
-    // t in [0,1]: 0=blue, 1=purple. We'll render rgb(r,0,255) where r = 255*t (blue→purple gradient)
-    function generateColor(t) {
-      const r = Math.round(255 * t);
-      return `rgb(${r},0,255)`;
-    }
-    // Exact prevalence blocks: baseline 50% blue, low 10% blue
-    function buildBlock({n, pBlue}) {
-      const nBlue = Math.round(n * pBlue);
-      const nNotBlue = n - nBlue;
-      const arr = [];
-      // Blue: t ∈ [0,0.5]
-      for (let i = 0; i < nBlue; i++) {
-        const t = Math.random() * 0.5;           // [0, 0.5]
-        arr.push({t, color: generateColor(t)});
-      }
-      // Not blue: t ∈ (0.5,1]
-      for (let i = 0; i < nNotBlue; i++) {
-        const t = 0.5 + Math.random() * 0.5;     // (0.5, 1]
-        arr.push({t, color: generateColor(t)});
-      }
-      return arr;
-    }
-    function truthIsBlue(t){ return t <= 0.5; }
+  // ---------- Experiment flow ----------
+  function startExperiment() {
+    document.getElementById('experiment').innerHTML = '<h2>Loading experiment...</h2>';
+    trialIndex = 0; responses = []; stimuli = [];
 
-    // ---------- Experiment flow ----------
-    function startExperiment() {
-      document.getElementById('experiment').innerHTML = '<h2>Loading experiment...</h2>';
+    const baseline = buildBlock({ n: 30, pBlue: 0.5 }).map(x => ({ ...x, prevalence: 'baseline' }));
+    const low      = buildBlock({ n: 30, pBlue: 0.10 }).map(x => ({ ...x, prevalence: 'low' }));
+    stimuli = baseline.concat(low).sort(() => Math.random() - 0.5);
 
-      trialIndex = 0; responses = []; stimuli = [];
+    renderTrial();
+  }
 
-      // Baseline: 30 trials @ 50% blue
-      const baseline = buildBlock({n:30, pBlue:0.5}).map(x => ({...x, prevalence:'baseline'}));
-      // Low-prevalence: 30 trials @ 10% blue
-      const low = buildBlock({n:30, pBlue:0.10}).map(x => ({...x, prevalence:'low'}));
-
-      stimuli = baseline.concat(low).sort(() => Math.random()-0.5);
-      renderTrial();
-    }
-
-    function renderTrial() {
-      const tr = stimuli[trialIndex];
-      document.getElementById('experiment').innerHTML = `
-        <div style="text-align:center">
-          <div class="circle" style="background:${tr.color};"></div>
-          <div class="flex">
-            <button class="primary-btn" onclick="recordResponse('blue')">Blue</button>
-            <button class="primary-btn" onclick="recordResponse('not-blue')">Not Blue</button>
-          </div>
-          <p class="muted" style="margin-top:.9rem;">Trial ${trialIndex+1} of ${stimuli.length}</p>
-        </div>
-      `;
-    }
-
-    function recordResponse(response) {
-      const tr = stimuli[trialIndex];
-      responses.push({ t: tr.t, color: tr.color, prevalence: tr.prevalence, response });
-      trialIndex++;
-      if (trialIndex < stimuli.length) {
-        renderTrial();
-      } else {
-        finishRun();
-      }
-    }
-
-    function finishRun() {
-      // Save the completed run to localStorage
-      const all = getAllRuns();
-      all.push({ ts: Date.now(), trials: responses });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-
-      // Summary UI + actions
-      document.getElementById('experiment').innerHTML = `
-        <h2>Experiment Complete</h2>
-        <p>You completed ${stimuli.length} trials.</p>
+  function renderTrial() {
+    const tr = stimuli[trialIndex];
+    document.getElementById('experiment').innerHTML = `
+      <div style="text-align:center">
+        <div class="circle" style="background:${tr.color};"></div>
         <div class="flex">
-          <button class="primary-btn" onclick="downloadCSV()">Download Results (CSV)</button>
-          <button class="primary-btn" onclick="showDashboard()">View Dashboard</button>
-          <button class="primary-btn" onclick="startExperiment()">Run Again</button>
+          <button class="primary-btn" onclick="recordResponse('blue')">Blue</button>
+          <button class="primary-btn" onclick="recordResponse('not-blue')">Not Blue</button>
         </div>
-      `;
+        <p class="muted" style="margin-top:.9rem;">Trial ${trialIndex+1} of ${stimuli.length}</p>
+      </div>
+    `;
+  }
 
-      // Instant refresh of dashboard views
-      refreshDashboard();
+  function recordResponse(response) {
+    const tr = stimuli[trialIndex];
+    responses.push({ t: tr.t, color: tr.color, prevalence: tr.prevalence, response });
+    trialIndex++;
+    if (trialIndex < stimuli.length) {
+      renderTrial();
+    } else {
+      finishRun(); // call the ONE global finishRun
+    }
+  }
+
+  // ---------- Cloud + local save ----------
+  function makeRunId() {
+    const rnd = Math.random().toString(36).slice(2, 8);
+    return `run_${Date.now()}_${rnd}`;
+  }
+
+  async function saveRunToCloud(run) {
+    const res = await fetch(GS_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(run)
+    });
+    if (!res.ok) throw new Error('Upload failed');
+    return res.json();
+  }
+
+  async function fetchAllRows() {
+    const res = await fetch(GS_ENDPOINT, { method: 'GET' });
+    if (!res.ok) throw new Error('Fetch failed');
+    const data = await res.json();
+    return data.rows || [];
+  }
+
+  // Convert flat rows -> [{ts, trials:[...]}] runs
+  async function getAllRuns() {
+    const rows = await fetchAllRows();
+    const byRun = new Map();
+    for (const r of rows) {
+      if (!byRun.has(r.run_id)) byRun.set(r.run_id, { ts: r.ts, trials: [] });
+      byRun.get(r.run_id).trials.push({
+        t: Number(r.t),
+        prevalence: r.prevalence,
+        response: r.response,
+        color: r.color
+      });
+    }
+    return Array.from(byRun.values());
+  }
+
+  async function finishRun() {
+    const run = { run_id: makeRunId(), ts: Date.now(), trials: responses };
+
+    // local fallback (optional)
+    try {
+      const local = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      local.push(run);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
+    } catch {}
+
+    let msg = '';
+    try {
+      await saveRunToCloud(run);
+      msg = 'Synced to Google Sheets.';
+    } catch (e) {
+      console.warn(e);
+      msg = 'Could not sync to Google Sheets (offline?). Data saved locally.';
     }
 
-    function downloadCSV() {
-      if (!responses.length) return;
-      const headers = ['t','color','prevalence','response'];
-      const rows = responses.map(r => [r.t, r.color, r.prevalence, r.response]);
-      const csv = [headers.join(',')].concat(rows.map(r=>r.join(','))).join('\n');
-      const blob = new Blob([csv], {type:'text/csv'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'experiment_results.csv';
-      a.click();
-      URL.revokeObjectURL(a.href);
-    }
+    document.getElementById('experiment').innerHTML = `
+      <h2>Experiment Complete</h2>
+      <p>You completed ${stimuli.length} trials.</p>
+      <p class="muted">${msg}</p>
+      <div class="flex">
+        <button class="primary-btn" onclick="downloadCSV()">Download Results (CSV)</button>
+        <button class="primary-btn" onclick="showDashboard()">View Dashboard</button>
+        <button class="primary-btn" onclick="startExperiment()">Run Again</button>
+      </div>
+    `;
 
-    // ---------- Aggregation + Dashboard ----------
-    function getAllRuns() {
-      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
-      catch { return []; }
-    }
+    refreshDashboard(); // async refresh of shared data
+  }
 
-    function aggregate(runs) {
-      const out = {
-        totalRuns: runs.length, totalTrials: 0,
-        overall: {TP:0,TN:0,FP:0,FN:0},
-        byBlock: { baseline:{TP:0,TN:0,FP:0,FN:0,n:0}, low:{TP:0,TN:0,FP:0,FN:0,n:0} },
-        bins: { labels:[0.0,0.2,0.4,0.6,0.8,1.0], baseline:[0,0,0,0,0,0], baselineN:[0,0,0,0,0,0],
-                low:[0,0,0,0,0,0], lowN:[0,0,0,0,0,0] }
-      };
-      const binIdx = t => Math.min(5, Math.floor(t*5+1e-9));
+  // ---------- CSV ----------
+  function downloadCSV() {
+    if (!responses.length) return;
+    const headers = ['t','color','prevalence','response'];
+    const rows = responses.map(r => [r.t, r.color, r.prevalence, r.response]);
+    const csv = [headers.join(',')].concat(rows.map(r => r.join(','))).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'experiment_results.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
 
-      for (const run of runs) {
-        if (!run || !run.trials) continue;
-        for (const tr of run.trials) {
-          const t = Number(tr.t);
-          const saidBlue = tr.response === 'blue';
-          const truth = truthIsBlue(t);
-          const blk = tr.prevalence === 'low' ? 'low' : 'baseline';
-          out.totalTrials++;
+  // ---------- Aggregation + Dashboard ----------
+  function aggregate(runs) {
+    const out = {
+      totalRuns: runs.length, totalTrials: 0,
+      overall: {TP:0,TN:0,FP:0,FN:0},
+      byBlock: { baseline:{TP:0,TN:0,FP:0,FN:0,n:0}, low:{TP:0,TN:0,FP:0,FN:0,n:0} },
+      bins: { labels:[0.0,0.2,0.4,0.6,0.8,1.0], baseline:[0,0,0,0,0,0], baselineN:[0,0,0,0,0,0],
+              low:[0,0,0,0,0,0], lowN:[0,0,0,0,0,0] }
+    };
+    const binIdx = t => Math.min(5, Math.floor(t*5 + 1e-9));
 
-          if (truth && saidBlue) out.overall.TP++;
-          else if (!truth && !saidBlue) out.overall.TN++;
-          else if (!truth && saidBlue) out.overall.FP++;
-          else out.overall.FN++;
+    for (const run of runs) {
+      if (!run || !run.trials) continue;
+      for (const tr of run.trials) {
+        const t = Number(tr.t);
+        const saidBlue = tr.response === 'blue';
+        const truth = truthIsBlue(t);
+        const blk = tr.prevalence === 'low' ? 'low' : 'baseline';
+        out.totalTrials++;
 
-          out.byBlock[blk].n++;
-          if (truth && saidBlue) out.byBlock[blk].TP++;
-          else if (!truth && !saidBlue) out.byBlock[blk].TN++;
-          else if (!truth && saidBlue) out.byBlock[blk].FP++;
-          else out.byBlock[blk].FN++;
+        if (truth && saidBlue) out.overall.TP++;
+        else if (!truth && !saidBlue) out.overall.TN++;
+        else if (!truth && saidBlue) out.overall.FP++;
+        else out.overall.FN++;
 
-          const b = binIdx(t);
-          if (blk==='low') { out.bins.low[b] += saidBlue?1:0; out.bins.lowN[b] += 1; }
-          else { out.bins.baseline[b] += saidBlue?1:0; out.bins.baselineN[b] += 1; }
-        }
+        out.byBlock[blk].n++;
+        if (truth && saidBlue) out.byBlock[blk].TP++;
+        else if (!truth && !saidBlue) out.byBlock[blk].TN++;
+        else if (!truth && saidBlue) out.byBlock[blk].FP++;
+        else out.byBlock[blk].FN++;
+
+        const b = binIdx(t);
+        if (blk === 'low') { out.bins.low[b] += saidBlue ? 1 : 0; out.bins.lowN[b] += 1; }
+        else { out.bins.baseline[b] += saidBlue ? 1 : 0; out.bins.baselineN[b] += 1; }
       }
-
-      const acc = x => {
-        const d = x.TP + x.TN + x.FP + x.FN;
-        return d ? (x.TP + x.TN)/d : 0;
-      };
-      out.accOverall  = acc(out.overall);
-      out.accBaseline = acc(out.byBlock.baseline);
-      out.accLow      = acc(out.byBlock.low);
-
-      out.pBlueBaseline = out.bins.baseline.map((c,i)=> out.bins.baselineN[i] ? c/out.bins.baselineN[i] : 0);
-      out.pBlueLow      = out.bins.low.map((c,i)=> out.bins.lowN[i] ? c/out.bins.lowN[i] : 0);
-      return out;
     }
 
-    const pct = x => (x*100).toFixed(1) + '%';
+    const acc = x => {
+      const d = x.TP + x.TN + x.FP + x.FN;
+      return d ? (x.TP + x.TN) / d : 0;
+    };
+    out.accOverall  = acc(out.overall);
+    out.accBaseline = acc(out.byBlock.baseline);
+    out.accLow      = acc(out.byBlock.low);
 
-    function renderMetrics(aggr){
-      const el = document.getElementById('metrics');
-      if (!el) return;
-      el.innerHTML = `
-        <div class="metric"><h4>Total Runs</h4><h3>${aggr.totalRuns}</h3></div>
-        <div class="metric"><h4>Total Trials</h4><h3>${aggr.totalTrials}</h3></div>
-        <div class="metric"><h4>Overall Accuracy</h4><h3>${pct(aggr.accOverall)}</h3></div>
-        <div class="metric"><h4>Baseline Accuracy</h4><h3>${pct(aggr.accBaseline)}</h3></div>
-        <div class="metric"><h4>Low-Prev Accuracy</h4><h3>${pct(aggr.accLow)}</h3></div>
-      `;
-    }
+    out.pBlueBaseline = out.bins.baseline.map((c,i)=> out.bins.baselineN[i] ? c/out.bins.baselineN[i] : 0);
+    out.pBlueLow      = out.bins.low.map((c,i)=> out.bins.lowN[i] ? c/out.bins.lowN[i] : 0);
+    return out;
+  }
 
-    function renderBreakdowns(aggr){
-      const b = aggr.byBlock.baseline, l = aggr.byBlock.low;
-      document.getElementById('b_tp').textContent = `True Positives: ${b.TP}`;
-      document.getElementById('b_tn').textContent = `True Negatives: ${b.TN}`;
-      document.getElementById('b_fp').textContent = `False Positives: ${b.FP}`;
-      document.getElementById('b_fn').textContent = `False Negatives: ${b.FN}`;
-      document.getElementById('l_tp').textContent = `True Positives: ${l.TP}`;
-      document.getElementById('l_tn').textContent = `True Negatives: ${l.TN}`;
-      document.getElementById('l_fp').textContent = `False Positives: ${l.FP}`;
-      document.getElementById('l_fn').textContent = `False Negatives: ${l.FN}`;
-    }
+  const pct = x => (x*100).toFixed(1) + '%';
 
-    function renderChart(aggr){
-      const ctx = document.getElementById('lineChart')?.getContext('2d');
-      if (!ctx) return;
-      const data = {
-        labels: [0.0,0.2,0.4,0.6,0.8,1.0],
-        datasets: [
-          { label:'Baseline', data: aggr.pBlueBaseline, borderColor:'blue',   fill:false, tension:.35 },
-          { label:'Low Prevalence', data: aggr.pBlueLow, borderColor:'purple', fill:false, tension:.35 }
-        ]
-      };
-      const options = {
-        plugins:{ title:{ display:true, text:'P(judged BLUE) across t — aggregated over all saved runs' } },
-        scales:{
-          x:{ title:{ display:true, text:'Stimulus continuum t (0=blue, 1=purple)' } },
-          y:{ title:{ display:true, text:'P(judged BLUE)' }, min:0, max:1 }
-        }
-      };
-      if (dashboardChart) {
-        dashboardChart.data = data;
-        dashboardChart.options = options;
-        dashboardChart.update();
-      } else {
-        dashboardChart = new Chart(ctx, { type:'line', data, options });
+  function renderMetrics(aggr){
+    const el = document.getElementById('metrics');
+    if (!el) return;
+    el.innerHTML = `
+      <div class="metric"><h4>Total Runs</h4><h3>${aggr.totalRuns}</h3></div>
+      <div class="metric"><h4>Total Trials</h4><h3>${aggr.totalTrials}</h3></div>
+      <div class="metric"><h4>Overall Accuracy</h4><h3>${pct(aggr.accOverall)}</h3></div>
+      <div class="metric"><h4>Baseline Accuracy</h4><h3>${pct(aggr.accBaseline)}</h3></div>
+      <div class="metric"><h4>Low-Prev Accuracy</h4><h3>${pct(aggr.accLow)}</h3></div>
+    `;
+  }
+
+  function renderBreakdowns(aggr){
+    const b = aggr.byBlock.baseline, l = aggr.byBlock.low;
+    document.getElementById('b_tp').textContent = `True Positives: ${b.TP}`;
+    document.getElementById('b_tn').textContent = `True Negatives: ${b.TN}`;
+    document.getElementById('b_fp').textContent = `False Positives: ${b.FP}`;
+    document.getElementById('b_fn').textContent = `False Negatives: ${b.FN}`;
+    document.getElementById('l_tp').textContent = `True Positives: ${l.TP}`;
+    document.getElementById('l_tn').textContent = `True Negatives: ${l.TN}`;
+    document.getElementById('l_fp').textContent = `False Positives: ${l.FP}`;
+    document.getElementById('l_fn').textContent = `False Negatives: ${l.FN}`;
+  }
+
+  function renderChart(aggr){
+    const ctx = document.getElementById('lineChart')?.getContext('2d');
+    if (!ctx) return;
+    const data = {
+      labels: [0.0,0.2,0.4,0.6,0.8,1.0],
+      datasets: [
+        { label:'Baseline', data: aggr.pBlueBaseline, borderColor:'blue',   fill:false, tension:.35 },
+        { label:'Low Prevalence', data: aggr.pBlueLow, borderColor:'purple', fill:false, tension:.35 }
+      ]
+    };
+    const options = {
+      plugins:{ title:{ display:true, text:'P(judged BLUE) across t — aggregated over all saved runs' } },
+      scales:{
+        x:{ title:{ display:true, text:'Stimulus continuum t (0=blue, 1=purple)' } },
+        y:{ title:{ display:true, text:'P(judged BLUE)' }, min:0, max:1 }
       }
+    };
+    if (dashboardChart) {
+      dashboardChart.data = data;
+      dashboardChart.options = options;
+      dashboardChart.update();
+    } else {
+      dashboardChart = new Chart(ctx, { type:'line', data, options });
     }
+  }
 
-    function refreshDashboard(){
-      const aggr = aggregate(getAllRuns());
-      renderMetrics(aggr);
-      renderBreakdowns(aggr);
-      renderChart(aggr);
+  // NOTE: async now, because getAllRuns() is async
+  async function refreshDashboard(){
+    let runs = [];
+    try {
+      runs = await getAllRuns();                 // cloud (all devices)
+    } catch {
+      // fallback to local data if cloud fetch fails
+      runs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
     }
+    const aggr = aggregate(runs);
+    renderMetrics(aggr);
+    renderBreakdowns(aggr);
+    renderChart(aggr);
+  }
 
-    // ---------- Init ----------
-    window.onload = () => { refreshDashboard(); };
-  </script>
-</body>
-</html>
+  // ---------- Init ----------
+  window.onload = () => { refreshDashboard(); };
+
+  // Auto-refresh every 15s while dashboard is visible
+  setInterval(() => {
+    const isVisible = !document.getElementById('dashboard').classList.contains('hidden');
+    if (isVisible) refreshDashboard();
+  }, 15000);
+</script>
+
+ 
