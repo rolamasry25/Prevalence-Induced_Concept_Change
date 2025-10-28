@@ -78,260 +78,255 @@
     const GS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxSab2a0grdmAZh-2AjxEfCz68pAzOYVjf-tVjZGwwaXQMjSWM-Rh_x8F1WW54VxyVY/exec';
   </script>
 
-  <script>
-    // ---------- Globals ----------
-    const STORAGE_KEY = 'cc_runs_v1';
-    let trialIndex = 0, responses = [], stimuli = [], dashboardChart = null;
+ <script>
 
-    // ---------- Nav ----------
-    function showExperiment(){
-      document.getElementById('experiment').classList.remove('hidden');
-      document.getElementById('dashboard').classList.add('hidden');
-    }
-    function showDashboard(){
-      document.getElementById('dashboard').classList.remove('hidden');
-      document.getElementById('experiment').classList.add('hidden');
-      refreshDashboard();
-    }
+  // ---------- Globals ----------
+  const STORAGE_KEY = 'cc_runs_v1';
+  const BASELINE_TRIALS = 30;
+  const LOW_TRIALS = 30;
 
-    // ---------- Stimuli ----------
-    function generateColor(t){ const r = Math.round(255*t); return `rgb(${r},0,255)`; }
-    function buildBlock({n,pBlue}){
-      const nBlue = Math.round(n*pBlue), nNotBlue = n - nBlue, arr = [];
-      for (let i=0;i<nBlue;i++){ const t = Math.random()*0.5; arr.push({t,color:generateColor(t)}); }
-      for (let i=0;i<nNotBlue;i++){ const t = 0.5 + Math.random()*0.5; arr.push({t,color:generateColor(t)}); }
-      return arr;
-    }
-    function truthIsBlue(t){ return t <= 0.5; }
+  let trialIndex = 0, responses = [], stimuli = [], dashboardChart = null;
 
-    // ---------- Experiment flow ----------
-    function startExperiment(){
-      document.getElementById('experiment').innerHTML = '<h2>Loading experiment...</h2>';
-      trialIndex = 0; responses = []; stimuli = [];
-     const BASELINE_TRIALS = 30;
-     const LOW_TRIALS = 30;
+  // ---------- Nav ----------
+  function showExperiment(){
+    document.getElementById('experiment').classList.remove('hidden');
+    document.getElementById('dashboard').classList.add('hidden');
+  }
+  function showDashboard(){
+    document.getElementById('dashboard').classList.remove('hidden');
+    document.getElementById('experiment').classList.add('hidden');
+    refreshDashboard();
+  }
 
-     const baseline = buildBlock({ n: BASELINE_TRIALS, pBlue: 0.5 })
+  // ---------- Stimuli ----------
+  function generateColor(t){ const r = Math.round(255*t); return `rgb(${r},0,255)`; }
+  function buildBlock({n,pBlue}){
+    const nBlue = Math.round(n*pBlue), nNotBlue = n - nBlue, arr = [];
+    for (let i=0;i<nBlue;i++){ const t = Math.random()*0.5; arr.push({t,color:generateColor(t)}); }
+    for (let i=0;i<nNotBlue;i++){ const t = 0.5 + Math.random()*0.5; arr.push({t,color:generateColor(t)}); }
+    return arr;
+  }
+  function truthIsBlue(t){ return t <= 0.5; }
+
+  // ---------- Experiment flow ----------
+  function startExperiment(){
+    document.getElementById('experiment').innerHTML = '<h2>Loading experiment...</h2>';
+    trialIndex = 0; responses = []; stimuli = [];
+
+    const baseline = buildBlock({ n: BASELINE_TRIALS, pBlue: 0.5 })
       .map((x, i) => ({ ...x, prevalence: 'baseline', seq: i + 1 }));
 
-     const low = buildBlock({ n: LOW_TRIALS, pBlue: 0.10 })
+    const low = buildBlock({ n: LOW_TRIALS, pBlue: 0.10 })
       .map((x, i) => ({ ...x, prevalence: 'low', seq: BASELINE_TRIALS + i + 1 }));
 
-// IMPORTANT: keep block order — baseline first, then low-prevalence
-stimuli = baseline.concat(low);
-      renderTrial();
-  } 
-function renderTrial() {
-  const tr = stimuli[trialIndex];
-  const blockLabel = tr.prevalence === 'baseline'
-    ? 'Baseline (50% blue)'
-    : 'Low Prevalence (10% blue)';
-  const BASELINE_TRIALS = 30; // keep in sync with startExperiment
-  const blockIndex = tr.prevalence === 'baseline'
-    ? trialIndex + 1
-    : trialIndex + 1 - BASELINE_TRIALS;
-  const blockTotal = tr.prevalence === 'baseline' ? 30 : 30;
+    // KEEP ORDER: baseline first, then low-prevalence (no shuffle)
+    stimuli = baseline.concat(low);
 
-  document.getElementById('experiment').innerHTML = `
-    <div style="text-align:center">
-      <div class="circle" style="background:${tr.color};"></div>
-      <div class="flex">
-        <button class="primary-btn" onclick="recordResponse('blue')">Blue</button>
-        <button class="primary-btn" onclick="recordResponse('not-blue')">Not Blue</button>
-      </div>
-      <p class="muted" style="margin-top:.9rem;">
-        Block: <strong>${blockLabel}</strong> — Trial ${blockIndex} of ${blockTotal}
-        <br/>Overall ${trialIndex + 1} / ${stimuli.length}
-      </p>
-    </div>
-  `;
-}
+    renderTrial();
+  } // <-- close startExperiment here ✅
 
+  function renderTrial(){
+    const tr = stimuli[trialIndex];
+    const blockLabel = tr.prevalence === 'baseline' ? 'Baseline (50% blue)' : 'Low Prevalence (10% blue)';
+    const blockIndex = tr.prevalence === 'baseline' ? (trialIndex + 1) : (trialIndex + 1 - BASELINE_TRIALS);
+    const blockTotal = tr.prevalence === 'baseline' ? BASELINE_TRIALS : LOW_TRIALS;
 
-    function recordResponse(response){
-      const tr = stimuli[trialIndex];
-      responses.push({ t: tr.t, color: tr.color, prevalence: tr.prevalence, response });
-      trialIndex++;
-      if (trialIndex < stimuli.length) renderTrial();
-      else finishRun();
+    document.getElementById('experiment').innerHTML = `
+      <div style="text-align:center">
+        <div class="circle" style="background:${tr.color};"></div>
+        <div class="flex">
+          <button class="primary-btn" onclick="recordResponse('blue')">Blue</button>
+          <button class="primary-btn" onclick="recordResponse('not-blue')">Not Blue</button>
+        </div>
+        <p class="muted" style="margin-top:.9rem;">
+          Block: <strong>${blockLabel}</strong> — Trial ${blockIndex} of ${blockTotal}
+          <br/>Overall ${trialIndex + 1} / ${stimuli.length}
+        </p>
+      </div>`;
+  }
+
+  function recordResponse(response){
+    const tr = stimuli[trialIndex];
+    responses.push({ t: tr.t, color: tr.color, prevalence: tr.prevalence, response });
+    trialIndex++;
+    if (trialIndex < stimuli.length) renderTrial();
+    else finishRun();
+  }
+
+  // ---------- Cloud + local ----------
+  function makeRunId(){ return `run_${Date.now()}_${Math.random().toString(36).slice(2,8)}`; }
+
+  async function saveRunToCloud(run){
+    const res = await fetch(GS_ENDPOINT, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' }, // avoids preflight
+      body: JSON.stringify(run)
+    });
+    const text = await res.text(); let data={}; try{ data = JSON.parse(text); }catch{}
+    if (!res.ok || data.ok === false) throw new Error('Upload failed: '+text);
+    return data;
+  }
+
+  async function fetchAllRows(){
+    const res = await fetch(GS_ENDPOINT, { method:'GET' });
+    const data = await res.json();
+    return data.rows || [];
+  }
+
+  async function getAllRuns(){
+    const rows = await fetchAllRows();
+    const byRun = new Map();
+    for (const r of rows){
+      if (!byRun.has(r.run_id)) byRun.set(r.run_id, { ts:r.ts, trials:[], run_id:r.run_id });
+      byRun.get(r.run_id).trials.push({ t:Number(r.t), prevalence:r.prevalence, response:r.response, color:r.color });
     }
+    return Array.from(byRun.values());
+  }
 
-    // ---------- Cloud + local ----------
-    function makeRunId(){ return `run_${Date.now()}_${Math.random().toString(36).slice(2,8)}`; }
+  async function finishRun(){
+    const run = { run_id: makeRunId(), ts: Date.now(), trials: responses };
 
-    async function saveRunToCloud(run){
-      // 'text/plain' avoids CORS preflight headaches with Apps Script
-      const res = await fetch(GS_ENDPOINT, {
-        method:'POST',
-        headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-        body: JSON.stringify(run)
-      });
-      const text = await res.text(); // read raw
-      let data={}; try{ data = JSON.parse(text); }catch{}
-      if (!res.ok || data.ok === false) throw new Error('Upload failed: '+text);
-      return data;
-    }
+    // local backup
+    try{
+      const local = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      local.push(run);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
+    }catch{}
 
-    async function fetchAllRows(){
-      const res = await fetch(GS_ENDPOINT, { method:'GET' });
-      const data = await res.json();
-      return data.rows || [];
-    }
+    // cloud upload (silent)
+    try{ await saveRunToCloud(run); }catch(e){ console.warn('Sync failed:', e); }
 
-    async function getAllRuns(){
-      const rows = await fetchAllRows();
-      const byRun = new Map();
-      for (const r of rows){
-        if (!byRun.has(r.run_id)) byRun.set(r.run_id, { ts:r.ts, trials:[] , run_id:r.run_id });
-        byRun.get(r.run_id).trials.push({ t:Number(r.t), prevalence:r.prevalence, response:r.response, color:r.color });
+    showDashboard(); // jump to dashboard
+  }
+
+  // ---------- CSV ----------
+  function downloadCSV(){
+    if (!responses.length) return;
+    const headers = ['t','color','prevalence','response'];
+    const rows = responses.map(r => [r.t, r.color, r.prevalence, r.response]);
+    const csv = [headers.join(',')].concat(rows.map(r=>r.join(','))).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    a.download = 'experiment_results.csv';
+    a.click();
+  }
+
+  // ---------- Aggregation + Dashboard ----------
+  function aggregate(runs){
+    const out = {
+      totalRuns:runs.length, totalTrials:0,
+      overall:{TP:0,TN:0,FP:0,FN:0},
+      byBlock:{ baseline:{TP:0,TN:0,FP:0,FN:0,n:0}, low:{TP:0,TN:0,FP:0,FN:0,n:0} },
+      bins:{ labels:[0.0,0.2,0.4,0.6,0.8,1.0], baseline:[0,0,0,0,0,0], baselineN:[0,0,0,0,0,0],
+             low:[0,0,0,0,0,0], lowN:[0,0,0,0,0,0] }
+    };
+    const binIdx = t => Math.min(5, Math.floor(t*5 + 1e-9));
+
+    for (const run of runs){
+      if (!run || !run.trials) continue;
+      for (const tr of run.trials){
+        const t = Number(tr.t), saidBlue = tr.response === 'blue', truth = truthIsBlue(t);
+        const blk = tr.prevalence === 'low' ? 'low' : 'baseline';
+        out.totalTrials++;
+        if (truth && saidBlue) out.overall.TP++;
+        else if (!truth && !saidBlue) out.overall.TN++;
+        else if (!truth && saidBlue) out.overall.FP++;
+        else out.overall.FN++;
+
+        out.byBlock[blk].n++;
+        if (truth && saidBlue) out.byBlock[blk].TP++;
+        else if (!truth && !saidBlue) out.byBlock[blk].TN++;
+        else if (!truth && saidBlue) out.byBlock[blk].FP++;
+        else out.byBlock[blk].FN++;
+
+        const b = binIdx(t);
+        if (blk==='low'){ out.bins.low[b] += saidBlue?1:0; out.bins.lowN[b] += 1; }
+        else { out.bins.baseline[b] += saidBlue?1:0; out.bins.baselineN[b] += 1; }
       }
-      return Array.from(byRun.values());
+    }
+    out.accOverall  = accuracy(out.overall);
+    out.accBaseline = accuracy(out.byBlock.baseline);
+    out.accLow      = accuracy(out.byBlock.low);
+    out.pBlueBaseline = out.bins.baseline.map((c,i)=> out.bins.baselineN[i] ? c/out.bins.baselineN[i] : 0);
+    out.pBlueLow      = out.bins.low.map((c,i)=> out.bins.lowN[i] ? c/out.bins.lowN[i] : 0);
+    return out;
+  }
+
+  function accuracy(x){ const d = x.TP+x.TN+x.FP+x.FN; return d? (x.TP+x.TN)/d : 0; }
+  function pct(x){ return (x*100).toFixed(1)+'%'; }
+
+  function renderMetrics(aggr){
+    const el = document.getElementById('metrics'); if (!el) return;
+    el.innerHTML = `
+      <div class="metric"><h4>Total Runs</h4><h3>${aggr.totalRuns}</h3></div>
+      <div class="metric"><h4>Total Trials</h4><h3>${aggr.totalTrials}</h3></div>
+      <div class="metric"><h4>Overall Accuracy</h4><h3>${pct(aggr.accOverall)}</h3></div>
+      <div class="metric"><h4>Baseline Accuracy</h4><h3>${pct(aggr.accBaseline)}</h3></div>
+      <div class="metric"><h4>Low-Prev Accuracy</h4><h3>${pct(aggr.accLow)}</h3></div>`;
+  }
+
+  function renderBreakdowns(aggr){
+    const b = aggr.byBlock.baseline, l = aggr.byBlock.low;
+    document.getElementById('b_tp').textContent = `True Positives: ${b.TP}`;
+    document.getElementById('b_tn').textContent = `True Negatives: ${b.TN}`;
+    document.getElementById('b_fp').textContent = `False Positives: ${b.FP}`;
+    document.getElementById('b_fn').textContent = `False Negatives: ${b.FN}`;
+    document.getElementById('l_tp').textContent = `True Positives: ${l.TP}`;
+    document.getElementById('l_tn').textContent = `True Negatives: ${l.TN}`;
+    document.getElementById('l_fp').textContent = `False Positives: ${l.FP}`;
+    document.getElementById('l_fn').textContent = `False Negatives: ${l.FN}`;
+  }
+
+  function renderChart(aggr){
+    const ctx = document.getElementById('lineChart')?.getContext('2d'); if (!ctx) return;
+    const data = {
+      labels:[0.0,0.2,0.4,0.6,0.8,1.0],
+      datasets:[
+        { label:'Baseline', data:aggr.pBlueBaseline, borderColor:'blue', fill:false, tension:.35 },
+        { label:'Low Prevalence', data:aggr.pBlueLow, borderColor:'purple', fill:false, tension:.35 }
+      ]
+    };
+    const options = {
+      plugins:{ title:{ display:true, text:'P(judged BLUE) across t — aggregated over all runs' } },
+      scales:{ x:{ title:{ display:true, text:'Stimulus continuum t (0=blue, 1=purple)'} },
+               y:{ title:{ display:true, text:'P(judged BLUE)'}, min:0, max:1 } }
+    };
+    if (dashboardChart){ dashboardChart.data = data; dashboardChart.options = options; dashboardChart.update(); }
+    else { dashboardChart = new Chart(ctx, { type:'line', data, options }); }
+  }
+
+  async function refreshDashboard(){
+    let runsCloud = [];
+    try { runsCloud = await getAllRuns(); } catch(e){ console.warn('Cloud fetch failed:', e); }
+    const runsLocal = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+    let runs = [];
+    if (runsCloud.length){
+      const seen = new Set(runsCloud.map(r=>r.run_id).filter(Boolean));
+      runs = runsCloud.concat(runsLocal.filter(r => !r.run_id || !seen.has(r.run_id)));
+    } else {
+      runs = runsLocal;
     }
 
-    async function finishRun(){
-      const run = { run_id: makeRunId(), ts: Date.now(), trials: responses };
+    const aggr = aggregate(runs);
+    renderMetrics(aggr);
+    renderBreakdowns(aggr);
+    renderChart(aggr);
+  }
 
-      // local backup
-      try{
-        const local = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-        local.push(run);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
-      }catch{}
+  // ---------- Init & expose ----------
+  window.onload = () => { refreshDashboard(); };
+  setInterval(() => {
+    const isVisible = !document.getElementById('dashboard').classList.contains('hidden');
+    if (isVisible) refreshDashboard();
+  }, 15000);
 
-      // cloud upload (silent)
-      try{ await saveRunToCloud(run); }catch(e){ console.warn('Sync failed:', e); }
+  window.showExperiment  = showExperiment;
+  window.showDashboard   = showDashboard;
+  window.startExperiment = startExperiment;
+  window.recordResponse  = recordResponse;
+  window.downloadCSV     = downloadCSV;
+</script>
 
-      // go straight to dashboard
-      showDashboard();
-    }
-
-    // ---------- CSV ----------
-    function downloadCSV(){
-      if (!responses.length) return;
-      const headers = ['t','color','prevalence','response'];
-      const rows = responses.map(r => [r.t, r.color, r.prevalence, r.response]);
-      const csv = [headers.join(',')].concat(rows.map(r=>r.join(','))).join('\n');
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-      a.download = 'experiment_results.csv';
-      a.click();
-    }
-
-    // ---------- Aggregation + Dashboard ----------
-    function aggregate(runs){
-      const out = {
-        totalRuns:runs.length, totalTrials:0,
-        overall:{TP:0,TN:0,FP:0,FN:0},
-        byBlock:{ baseline:{TP:0,TN:0,FP:0,FN:0,n:0}, low:{TP:0,TN:0,FP:0,FN:0,n:0} },
-        bins:{ labels:[0.0,0.2,0.4,0.6,0.8,1.0], baseline:[0,0,0,0,0,0], baselineN:[0,0,0,0,0,0],
-               low:[0,0,0,0,0,0], lowN:[0,0,0,0,0,0] }
-      };
-      const binIdx = t => Math.min(5, Math.floor(t*5 + 1e-9));
-
-      for (const run of runs){
-        if (!run || !run.trials) continue;
-        for (const tr of run.trials){
-          const t = Number(tr.t), saidBlue = tr.response === 'blue', truth = truthIsBlue(t);
-          const blk = tr.prevalence === 'low' ? 'low' : 'baseline';
-          out.totalTrials++;
-          if (truth && saidBlue) out.overall.TP++; else
-          if (!truth && !saidBlue) out.overall.TN++; else
-          if (!truth && saidBlue) out.overall.FP++; else out.overall.FN++;
-
-          out.byBlock[blk].n++;
-          if (truth && saidBlue) out.byBlock[blk].TP++; else
-          if (!truth && !saidBlue) out.byBlock[blk].TN++; else
-          if (!truth && saidBlue) out.byBlock[blk].FP++; else out.byBlock[blk].FN++;
-
-          const b = binIdx(t);
-          if (blk==='low'){ out.bins.low[b] += saidBlue?1:0; out.bins.lowN[b] += 1; }
-          else { out.bins.baseline[b] += saidBlue?1:0; out.bins.baselineN[b] += 1; }
-        }
-      }
-      out.accOverall  = accuracy(out.overall);
-      out.accBaseline = accuracy(out.byBlock.baseline);
-      out.accLow      = accuracy(out.byBlock.low);
-      out.pBlueBaseline = out.bins.baseline.map((c,i)=> out.bins.baselineN[i] ? c/out.bins.baselineN[i] : 0);
-      out.pBlueLow      = out.bins.low.map((c,i)=> out.bins.lowN[i] ? c/out.bins.lowN[i] : 0);
-      return out;
-    }
-
-    function accuracy(x){ const d = x.TP+x.TN+x.FP+x.FN; return d? (x.TP+x.TN)/d : 0; }
-    function pct(x){ return (x*100).toFixed(1)+'%'; } // hoisted function (no TDZ issues)
-
-    function renderMetrics(aggr){
-      const el = document.getElementById('metrics'); if (!el) return;
-      el.innerHTML = `
-        <div class="metric"><h4>Total Runs</h4><h3>${aggr.totalRuns}</h3></div>
-        <div class="metric"><h4>Total Trials</h4><h3>${aggr.totalTrials}</h3></div>
-        <div class="metric"><h4>Overall Accuracy</h4><h3>${pct(aggr.accOverall)}</h3></div>
-        <div class="metric"><h4>Baseline Accuracy</h4><h3>${pct(aggr.accBaseline)}</h3></div>
-        <div class="metric"><h4>Low-Prev Accuracy</h4><h3>${pct(aggr.accLow)}</h3></div>`;
-    }
-
-    function renderBreakdowns(aggr){
-      const b = aggr.byBlock.baseline, l = aggr.byBlock.low;
-      document.getElementById('b_tp').textContent = `True Positives: ${b.TP}`;
-      document.getElementById('b_tn').textContent = `True Negatives: ${b.TN}`;
-      document.getElementById('b_fp').textContent = `False Positives: ${b.FP}`;
-      document.getElementById('b_fn').textContent = `False Negatives: ${b.FN}`;
-      document.getElementById('l_tp').textContent = `True Positives: ${l.TP}`;
-      document.getElementById('l_tn').textContent = `True Negatives: ${l.TN}`;
-      document.getElementById('l_fp').textContent = `False Positives: ${l.FP}`;
-      document.getElementById('l_fn').textContent = `False Negatives: ${l.FN}`;
-    }
-
-    function renderChart(aggr){
-      const ctx = document.getElementById('lineChart')?.getContext('2d'); if (!ctx) return;
-      const data = {
-        labels:[0.0,0.2,0.4,0.6,0.8,1.0],
-        datasets:[
-          { label:'Baseline', data:aggr.pBlueBaseline, borderColor:'blue', fill:false, tension:.35 },
-          { label:'Low Prevalence', data:aggr.pBlueLow, borderColor:'purple', fill:false, tension:.35 }
-        ]
-      };
-      const options = {
-        plugins:{ title:{ display:true, text:'P(judged BLUE) across t — aggregated over all runs' } },
-        scales:{ x:{ title:{ display:true, text:'Stimulus continuum t (0=blue, 1=purple)'} },
-                 y:{ title:{ display:true, text:'P(judged BLUE)'}, min:0, max:1 } }
-      };
-      if (dashboardChart){ dashboardChart.data = data; dashboardChart.options = options; dashboardChart.update(); }
-      else { dashboardChart = new Chart(ctx, { type:'line', data, options }); }
-    }
-
-    async function refreshDashboard(){
-      let runsCloud = [];
-      try { runsCloud = await getAllRuns(); } catch(e){ console.warn('Cloud fetch failed:', e); }
-      const runsLocal = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-
-      // merge: prefer cloud; add local runs not in cloud (by run_id)
-      let runs = [];
-      if (runsCloud.length){
-        const seen = new Set(runsCloud.map(r=>r.run_id).filter(Boolean));
-        runs = runsCloud.concat(runsLocal.filter(r => !r.run_id || !seen.has(r.run_id)));
-      } else {
-        runs = runsLocal;
-      }
-
-      const aggr = aggregate(runs);
-      renderMetrics(aggr);
-      renderBreakdowns(aggr);
-      renderChart(aggr);
-    }
-
-    // ---------- Init & globals for inline onclick ----------
-    window.onload = () => { refreshDashboard(); };
-    setInterval(() => {
-      const isVisible = !document.getElementById('dashboard').classList.contains('hidden');
-      if (isVisible) refreshDashboard();
-    }, 15000);
-
-    // expose handlers
-    window.showExperiment  = showExperiment;
-    window.showDashboard   = showDashboard;
-    window.startExperiment = startExperiment;
-    window.recordResponse  = recordResponse;
-    window.downloadCSV     = downloadCSV;
-  </script>
 </body>
 </html>
