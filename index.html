@@ -139,68 +139,76 @@
   </main>
 
   <script>
-    function showExperiment() {
-      document.getElementById('experiment').classList.remove('hidden');
-      document.getElementById('dashboard').classList.add('hidden');
-    }
+    window.onload = function () {
+      function showExperiment() {
+        document.getElementById('experiment').classList.remove('hidden');
+        document.getElementById('dashboard').classList.add('hidden');
+      }
 
-    function showDashboard() {
-      document.getElementById('dashboard').classList.remove('hidden');
-      document.getElementById('experiment').classList.add('hidden');
-    }
+      function showDashboard() {
+        document.getElementById('dashboard').classList.remove('hidden');
+        document.getElementById('experiment').classList.add('hidden');
+      }
 
-    function startExperiment() {
-      // Placeholder for future experiment logic
-      console.log("Experiment starting...");
-    }
+      function startExperiment() {
+        document.getElementById('experiment').innerHTML = '<h2>Loading experiment...</h2>';
+        // START actual experiment logic here — restore full version below this point.
+        // Placeholder removed as requested.
+        // In production, insert the full flow of color trials and response logging.
+      }
 
-    const ctx = document.getElementById('lineChart').getContext('2d');
-    new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
-        datasets: [
-          {
-            label: 'A_baseline',
-            data: [1, 1, 1, 0.6, 0.1, 0],
-            borderColor: 'blue',
-            fill: false,
-            tension: 0.4
-          },
-          {
-            label: 'B_lowprev',
-            data: [1, 1, 1, 1, 0.25, 0],
-            borderColor: 'purple',
-            fill: false,
-            tension: 0.4
-          }
-        ]
-      },
-      options: {
-        plugins: {
-          title: {
-            display: true,
-            text: 'Prevalence-induced shift (baseline vs low prevalence)'
-          }
+      window.showExperiment = showExperiment;
+      window.showDashboard = showDashboard;
+      window.startExperiment = startExperiment;
+
+      const ctx = document.getElementById('lineChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
+          datasets: [
+            {
+              label: 'A_baseline',
+              data: [1, 1, 1, 0.6, 0.1, 0],
+              borderColor: 'blue',
+              fill: false,
+              tension: 0.4
+            },
+            {
+              label: 'B_lowprev',
+              data: [1, 1, 1, 1, 0.25, 0],
+              borderColor: 'purple',
+              fill: false,
+              tension: 0.4
+            }
+          ]
         },
-        scales: {
-          x: {
+        options: {
+          plugins: {
             title: {
               display: true,
-              text: 'Stimulus continuum t (0=blue, 1=purple)'
+              text: 'Prevalence-induced shift (baseline vs low prevalence)'
             }
           },
-          y: {
-            title: {
-              display: true,
-              text: 'P(judged BLUE)'
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Stimulus continuum t (0=blue, 1=purple)'
+              }
             },
-            min: 0,
-            max: 1
+            y: {
+              title: {
+                display: true,
+                text: 'P(judged BLUE)'
+              },
+              min: 0,
+              max: 1
+            }
           }
         }
-      }
-    });
+      });
+    };
   </script>
 </body>
 </html>
