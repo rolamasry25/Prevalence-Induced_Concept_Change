@@ -1,4 +1,156 @@
-      let trialIndex = 0;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Concept Change Study</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f9fafc;
+      color: #333;
+    }
+    nav {
+      background: #0d6efd;
+      padding: 1rem 2rem;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+    }
+    nav span.logo {
+      font-size: 1.2rem;
+    }
+    nav a {
+      color: white;
+      margin-left: 1rem;
+      text-decoration: none;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 1rem 2rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      margin: 20px 0;
+      width: 100%;
+      max-width: 800px;
+    }
+    .dashboard-metrics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      margin: 2rem 0;
+    }
+    .metric {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem 2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      min-width: 180px;
+      text-align: center;
+    }
+    .metric h3 {
+      margin: 0.5rem 0;
+    }
+    canvas {
+      margin-top: 2rem;
+      max-width: 800px;
+    }
+    .primary-btn {
+      padding: 10px 20px;
+      background: #198754;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <nav>
+    <span class="logo">🔬 Concept Change Study</span>
+    <div>
+      <a onclick="showExperiment()">Experiment</a>
+      <a onclick="showDashboard()">Dashboard</a>
+    </div>
+  </nav>
+  <main>
+    <div id="experiment" class="card">
+      <h2>Welcome to the Concept Change Experiment</h2>
+      <p>Click below to begin classifying blue vs non-blue colors.</p>
+      <button class="primary-btn" onclick="startExperiment()">Start Experiment</button>
+    </div>
+
+    <div id="dashboard" class="card hidden">
+      <h2>Dashboard</h2>
+      <div class="dashboard-metrics">
+        <div class="metric">
+          <h4>Total Participants</h4>
+          <h3>3</h3>
+        </div>
+        <div class="metric">
+          <h4>Overall Accuracy</h4>
+          <h3>93.9%</h3>
+        </div>
+        <div class="metric">
+          <h4>Baseline Accuracy</h4>
+          <h3>91.1%</h3>
+        </div>
+        <div class="metric">
+          <h4>Low-Prev Accuracy</h4>
+          <h3>96.7%</h3>
+        </div>
+      </div>
+
+      <canvas id="lineChart"></canvas>
+
+      <h2>Response Classification Breakdown</h2>
+      <div style="display: flex; justify-content: space-around; flex-wrap: wrap">
+        <div>
+          <h3>Baseline Block (50% Blue)</h3>
+          <p>True Positives: 25</p>
+          <p>True Negatives: 15</p>
+          <p>False Positives: 8</p>
+          <p>False Negatives: 0</p>
+        </div>
+        <div>
+          <h3>Low Prevalence Block (10% Blue)</h3>
+          <p>True Positives: 4</p>
+          <p>True Negatives: 34</p>
+          <p>False Positives: 2</p>
+          <p>False Negatives: 0</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function showExperiment() {
+      document.getElementById('experiment').classList.remove('hidden');
+      document.getElementById('dashboard').classList.add('hidden');
+    }
+
+    function showDashboard() {
+      document.getElementById('dashboard').classList.remove('hidden');
+      document.getElementById('experiment').classList.add('hidden');
+    }
+
+    function startExperiment() {
+      document.getElementById('experiment').innerHTML = '<h2>Loading experiment...</h2>';let trialIndex = 0;
       let responses = [];
       const totalTrials = 60;
       const baselineCount = 30;
@@ -79,3 +231,60 @@
       };
 
       renderTrial();
+
+    }
+
+    window.onload = function () {
+      const ctx = document.getElementById('lineChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
+          datasets: [
+            {
+              label: 'A_baseline',
+              data: [1, 1, 1, 0.6, 0.1, 0],
+              borderColor: 'blue',
+              fill: false,
+              tension: 0.4
+            },
+            {
+              label: 'B_lowprev',
+              data: [1, 1, 1, 1, 0.25, 0],
+              borderColor: 'purple',
+              fill: false,
+              tension: 0.4
+            }
+          ]
+        },
+        options: {
+          plugins: {
+            title: {
+              display: true,
+              text: 'Prevalence-induced shift (baseline vs low prevalence)'
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Stimulus continuum t (0=blue, 1=purple)'
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'P(judged BLUE)'
+              },
+              min: 0,
+              max: 1
+            }
+          }
+        }
+      });
+    };
+  </script>
+</body>
+</html>
+
+      
