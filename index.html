@@ -149,24 +149,21 @@
       document.getElementById('experiment').classList.add('hidden');
     }
 
+    function generateColor(t) {
+      const r = Math.round(255 * t);
+      const g = 0;
+      const b = 255;
+      return `rgb(${r},${g},${b})`;
+    }
+
     function startExperiment() {
-      document.getElementById('experiment').innerHTML = '<h2>Loading experiment...</h2>';let trialIndex = 0;
+      document.getElementById('experiment').innerHTML = '<h2>Loading experiment...</h2>';
+
+      let trialIndex = 0;
       let responses = [];
-      const totalTrials = 60;
       const baselineCount = 30;
       const lowPrevCount = 30;
-
       const stimuli = [];
-
-      function generateColor(t) {
-  const r = Math.round(255 * t); // from 0 (blue) to 255 (purple)
-  const g = 0;
-  const b = 255;
-  return `rgb(${r},${g},${b})`;
-},${g},${b})`;
-},${g},${b})`;
-
-      }
 
       for (let i = 0; i < baselineCount; i++) {
         const t = Math.random();
@@ -178,12 +175,10 @@
         stimuli.push({ t, prevalence: 'low', color: generateColor(t) });
       }
 
-      // Shuffle the trials
       stimuli.sort(() => Math.random() - 0.5);
 
       function renderTrial() {
         const trial = stimuli[trialIndex];
-
         document.getElementById('experiment').innerHTML = `
           <div style="text-align: center">
             <div style="width: 250px; height: 250px; margin: 30px auto; border-radius: 50%; background-color: ${trial.color};"></div>
@@ -197,11 +192,7 @@
       }
 
       window.recordResponse = function (response) {
-        responses.push({
-          ...stimuli[trialIndex],
-          response
-        });
-
+        responses.push({ ...stimuli[trialIndex], response });
         trialIndex++;
         if (trialIndex < stimuli.length) {
           renderTrial();
@@ -234,7 +225,6 @@
       };
 
       renderTrial();
-
     }
 
     window.onload = function () {
@@ -289,5 +279,3 @@
   </script>
 </body>
 </html>
-
-      
