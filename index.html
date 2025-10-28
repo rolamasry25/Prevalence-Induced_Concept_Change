@@ -2,74 +2,146 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Prevalence-Induced Concept Change</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Concept Classification Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 2rem;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #f4f4f4;
+      margin: 0;
+      flex-direction: column;
     }
     .dot {
-      width: 100px;
-      height: 100px;
+      width: 120px;
+      height: 120px;
       border-radius: 50%;
-      margin: 20px auto;
+      margin: 30px auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-    button {
-      padding: 10px 20px;
+    .button-group button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 8px;
       margin: 10px;
-      font-size: 1rem;
       cursor: pointer;
+      transition: background-color 0.3s ease;
     }
+    .button-group button:hover {
+      background-color: #0056b3;
+    }
+    .hidden { display: none; }
+    canvas { margin-top: 30px; }
   </style>
 </head>
 <body>
-  <h1>Concept Classification Test</h1>
-  <p>Decide whether the shown item belongs to the category.</p>
-  <button onclick="startExperiment()">Start</button>
-
-  <div id="experiment"></div>
+  <h1>Prevalence-Induced Concept Change</h1>
+  <div id="experiment">
+    <button onclick="startExperiment()">Start</button>
+  </div>
+  <canvas id="resultChart" class="hidden" width="400" height="200"></canvas>
 
   <script>
-    const stimuli = [
-      { color: "blue", category: true },
-      { color: "purple", category: true },
-      { color: "red", category: false },
-      { color: "pink", category: false },
-      { color: "darkblue", category: true },
-      { color: "violet", category: false },
-      { color: "indigo", category: false },
+    const baseColors = [
+      { name: "blue", code: "#0000FF", category: true },
+      { name: "royalblue", code: "#4169E1", category: true },
+      { name: "mediumslateblue", code: "#7B68EE", category: true },
+      { name: "blueviolet", code: "#8A2BE2", category: false },
+      { name: "mediumorchid", code: "#BA55D3", category: false },
+      { name: "purple", code: "#800080", category: false }
     ];
 
+    let trials = [];
     let currentIndex = 0;
+    let block = 'Baseline';
 
     function startExperiment() {
+      trials = [];
       currentIndex = 0;
-      document.querySelector("#experiment").innerHTML = "";
-      showNextStimulus();
+      block = 'Baseline';
+      document.getElementById('resultChart').classList.add('hidden');
+      showNext();
     }
 
-    function showNextStimulus() {
-      if (currentIndex >= stimuli.length) {
-        document.querySelector("#experiment").innerHTML = "<p>Test complete! Thank you.</p>";
+    function showNext() {
+      if (currentIndex >= 60) {
+        showChart();
         return;
       }
 
-      const current = stimuli[currentIndex];
-      const div = document.querySelector("#experiment");
-      div.innerHTML = `
-        <div class="dot" style="background-color: ${current.color};"></div>
-        <button onclick="respond(true)">Yes</button>
-        <button onclick="respond(false)">No</button>
+      if (currentIndex === 30) block = 'Low Prevalence';
+
+      let stimulus;
+      if (block === 'Baseline') {
+        stimulus = baseColors[Math.floor(Math.random() * 6)];
+      } else {
+        // 10% blue in low prevalence
+        stimulus = Math.random() < 0.1 ? baseColors[Math.floor(Math.random() * 3)] : baseColors[Math.floor(Math.random() * 3) + 3];
+      }
+
+      const container = document.getElementById('experiment');
+      container.innerHTML = `
+        <div class="dot" style="background-color: ${stimulus.code};"></div>
+        <div class="button-group">
+          <button onclick="recordResponse(true, '${stimulus.name}', ${stimulus.category}, '${block}')">Blue</button>
+          <button onclick="recordResponse(false, '${stimulus.name}', ${stimulus.category}, '${block}')">Not Blue</button>
+        </div>
+        <p><strong>Block:</strong> ${block}<br><strong>Trial ${currentIndex + 1} of 60</strong></p>
       `;
     }
 
-    function respond(response) {
-      const correct = response === stimuli[currentIndex].category;
-      console.log(`Color: ${stimuli[currentIndex].color}, Response: ${response}, Correct: ${correct}`);
+    function recordResponse(userResponse, colorName, isBlue, blockType) {
+      trials.push({
+        color: colorName,
+        isBlue: isBlue,
+        response: userResponse,
+        correct: userResponse === isBlue,
+        block: blockType
+      });
       currentIndex++;
-      showNextStimulus();
+      showNext();
+    }
+
+    function showChart() {
+      const container = document.getElementById('experiment');
+      container.innerHTML = `<p>Experiment complete! See results below.</p>`;
+      const ctx = document.getElementById('resultChart');
+      document.getElementById('resultChart').classList.remove('hidden');
+
+      const blocks = { Baseline: [], "Low Prevalence": [] };
+      trials.forEach(t => blocks[t.block].push(t.correct));
+
+      const baselineAcc = (blocks.Baseline.filter(x => x).length / blocks.Baseline.length) * 100;
+      const lowAcc = (blocks["Low Prevalence"].filter(x => x).length / blocks["Low Prevalence"].length) * 100;
+
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Baseline (50% Blue)', 'Low Prevalence (10% Blue)'],
+          datasets: [{
+            label: 'Accuracy (%)',
+            data: [baselineAcc, lowAcc],
+            backgroundColor: ['#007bff', '#800080']
+          }]
+        },
+        options: {
+          scales: { y: { beginAtZero: true, max: 100 } },
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      // Save results to localStorage or optionally send to backend later
+      const saved = localStorage.getItem('concept_trials') || "[]";
+      const all = JSON.parse(saved);
+      all.push(trials);
+      localStorage.setItem('concept_trials', JSON.stringify(all));
     }
   </script>
 </body>
