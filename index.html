@@ -6,45 +6,27 @@
   <title>Concept Change Study</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    :root { --brand: #0d6efd; --ok:#198754; --bg:#f9fafc; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color:#333; }
-    nav {
-      background: var(--brand); color:#fff; padding:1rem 2rem;
-      display:flex; justify-content:space-between; align-items:center; font-weight:600;
-    }
+    :root { --brand:#0d6efd; --ok:#198754; --bg:#f9fafc; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:#333; }
+    nav { background:var(--brand); color:#fff; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center; font-weight:600; position:sticky; top:0; z-index:1000; }
     nav a { color:#fff; margin-left:1rem; text-decoration:none; cursor:pointer; font-weight:500; }
     nav a:hover { text-decoration:underline; }
     main { display:flex; flex-direction:column; align-items:center; padding:2rem 1rem; }
-    .card {
-      background:#fff; border-radius:12px; padding:1.25rem 1.5rem;
-      box-shadow:0 4px 14px rgba(0,0,0,.1); width:100%; max-width:960px;
-    }
-    .dashboard-metrics {
-      display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr));
-      gap:16px; margin: 1rem 0 1.25rem;
-    }
-    .metric {
-      background:#fff; border-radius:10px; padding:1rem 1rem;
-      box-shadow:0 2px 10px rgba(0,0,0,.08); text-align:center;
-    }
+    .card { background:#fff; border-radius:12px; padding:1.25rem 1.5rem; box-shadow:0 4px 14px rgba(0,0,0,.1); width:100%; max-width:960px; }
+    .dashboard-metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin:1rem 0 1.25rem; }
+    .metric { background:#fff; border-radius:10px; padding:1rem; box-shadow:0 2px 10px rgba(0,0,0,.08); text-align:center; }
     .metric h4 { margin:.25rem 0 0; font-weight:600; font-size:.95rem; color:#555; }
     .metric h3 { margin:.25rem 0 .1rem; font-size:1.25rem; }
-    .primary-btn {
-      padding:10px 18px; background: var(--ok); color:#fff; border:none; border-radius:8px;
-      font-size:16px; cursor:pointer;
-    }
-    .primary-btn:active { transform: translateY(1px); }
+    .primary-btn { padding:10px 18px; background:var(--ok); color:#fff; border:none; border-radius:8px; font-size:16px; cursor:pointer; }
+    .primary-btn:active { transform:translateY(1px); }
     .flex { display:flex; gap:20px; justify-content:center; align-items:center; flex-wrap:wrap; }
     .hidden { display:none; }
-    .circle {
-      width:260px; height:260px; margin:24px auto 18px; border-radius:50%;
-      border: 4px solid rgba(0,0,0,.04);
-    }
-    .two-col { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:18px; }
-    .breakdown { display:grid; grid-template-columns:repeat(2, minmax(200px, 1fr)); gap:18px; }
+    .circle { width:260px; height:260px; margin:24px auto 18px; border-radius:50%; border:4px solid rgba(0,0,0,.04); }
+    .breakdown { display:grid; grid-template-columns:repeat(2,minmax(220px,1fr)); gap:18px; }
     @media (max-width:560px){ .breakdown{ grid-template-columns:1fr; } }
     canvas { margin-top:1.25rem; max-width:100%; }
+    #lineChart { pointer-events:none; } /* never block clicks */
     .muted { color:#666; font-size:.95rem; }
   </style>
 </head>
@@ -68,21 +50,19 @@
     <!-- Dashboard -->
     <div id="dashboard" class="card hidden">
       <h2>Dashboard</h2>
-
       <div class="dashboard-metrics" id="metrics"></div>
-
       <canvas id="lineChart" height="250"></canvas>
 
       <h2 style="margin-top:1.25rem;">Response Classification Breakdown</h2>
-      <div id="breakdowns" class="breakdown">
-        <div class="metric" id="baselineBox">
+      <div class="breakdown">
+        <div class="metric">
           <h3>Baseline Block (50% Blue)</h3>
           <p id="b_tp">True Positives: 0</p>
           <p id="b_tn">True Negatives: 0</p>
           <p id="b_fp">False Positives: 0</p>
           <p id="b_fn">False Negatives: 0</p>
         </div>
-        <div class="metric" id="lowBox">
+        <div class="metric">
           <h3>Low Prevalence Block (10% Blue)</h3>
           <p id="l_tp">True Positives: 0</p>
           <p id="l_tn">True Negatives: 0</p>
@@ -92,330 +72,245 @@
       </div>
     </div>
   </main>
-<script>
-  const GS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxIymkak0kokOsydwSEOMnYX3TNvx0lU9P94yZ0oSkIwtnli4RPj3qrSlMxNZbYhvB7/exec';
-</script>
-<script>
-  // ---------- Globals ----------
-  const STORAGE_KEY = 'cc_runs_v1';
-  let trialIndex = 0;
-  let responses = [];
-  let stimuli = [];
-  let dashboardChart = null;
 
-  // ---------- Nav ----------
-  function showExperiment() {
-    document.getElementById('experiment').classList.remove('hidden');
-    document.getElementById('dashboard').classList.add('hidden');
-  }
-  function showDashboard() {
-    document.getElementById('dashboard').classList.remove('hidden');
-    document.getElementById('experiment').classList.add('hidden');
-    refreshDashboard(); // async (fire-and-forget)
-  }
+  <!-- Your Google Apps Script Web App URL -->
+  <script>
+    const GS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxSab2a0grdmAZh-2AjxEfCz68pAzOYVjf-tVjZGwwaXQMjSWM-Rh_x8F1WW54VxyVY/exec';
+  </script>
 
-  // ---------- Stimuli generation ----------
-  function generateColor(t) {
-    const r = Math.round(255 * t);      // blue -> purple gradient
-    return `rgb(${r},0,255)`;
-  }
-  function buildBlock({ n, pBlue }) {
-    const nBlue = Math.round(n * pBlue);
-    const nNotBlue = n - nBlue;
-    const arr = [];
-    for (let i = 0; i < nBlue; i++) {
-      const t = Math.random() * 0.5;            // [0, 0.5]
-      arr.push({ t, color: generateColor(t) });
+  <script>
+    // ---------- Globals ----------
+    const STORAGE_KEY = 'cc_runs_v1';
+    let trialIndex = 0, responses = [], stimuli = [], dashboardChart = null;
+
+    // ---------- Nav ----------
+    function showExperiment(){
+      document.getElementById('experiment').classList.remove('hidden');
+      document.getElementById('dashboard').classList.add('hidden');
     }
-    for (let i = 0; i < nNotBlue; i++) {
-      const t = 0.5 + Math.random() * 0.5;      // (0.5, 1]
-      arr.push({ t, color: generateColor(t) });
+    function showDashboard(){
+      document.getElementById('dashboard').classList.remove('hidden');
+      document.getElementById('experiment').classList.add('hidden');
+      refreshDashboard();
     }
-    return arr;
-  }
-  function truthIsBlue(t) { return t <= 0.5; }
 
-  // ---------- Experiment flow ----------
-  function startExperiment() {
-    document.getElementById('experiment').innerHTML = '<h2>Loading experiment...</h2>';
-    trialIndex = 0; responses = []; stimuli = [];
+    // ---------- Stimuli ----------
+    function generateColor(t){ const r = Math.round(255*t); return `rgb(${r},0,255)`; }
+    function buildBlock({n,pBlue}){
+      const nBlue = Math.round(n*pBlue), nNotBlue = n - nBlue, arr = [];
+      for (let i=0;i<nBlue;i++){ const t = Math.random()*0.5; arr.push({t,color:generateColor(t)}); }
+      for (let i=0;i<nNotBlue;i++){ const t = 0.5 + Math.random()*0.5; arr.push({t,color:generateColor(t)}); }
+      return arr;
+    }
+    function truthIsBlue(t){ return t <= 0.5; }
 
-    const baseline = buildBlock({ n: 30, pBlue: 0.5 }).map(x => ({ ...x, prevalence: 'baseline' }));
-    const low      = buildBlock({ n: 30, pBlue: 0.10 }).map(x => ({ ...x, prevalence: 'low' }));
-    stimuli = baseline.concat(low).sort(() => Math.random() - 0.5);
-
-    renderTrial();
-  }
-
-  function renderTrial() {
-    const tr = stimuli[trialIndex];
-    document.getElementById('experiment').innerHTML = `
-      <div style="text-align:center">
-        <div class="circle" style="background:${tr.color};"></div>
-        <div class="flex">
-          <button class="primary-btn" onclick="recordResponse('blue')">Blue</button>
-          <button class="primary-btn" onclick="recordResponse('not-blue')">Not Blue</button>
-        </div>
-        <p class="muted" style="margin-top:.9rem;">Trial ${trialIndex+1} of ${stimuli.length}</p>
-      </div>
-    `;
-  }
-
-  function recordResponse(response) {
-    const tr = stimuli[trialIndex];
-    responses.push({ t: tr.t, color: tr.color, prevalence: tr.prevalence, response });
-    trialIndex++;
-    if (trialIndex < stimuli.length) {
+    // ---------- Experiment flow ----------
+    function startExperiment(){
+      document.getElementById('experiment').innerHTML = '<h2>Loading experiment...</h2>';
+      trialIndex = 0; responses = []; stimuli = [];
+      const baseline = buildBlock({n:30, pBlue:0.5}).map(x=>({...x,prevalence:'baseline'}));
+      const low      = buildBlock({n:30, pBlue:0.10}).map(x=>({...x,prevalence:'low'}));
+      stimuli = baseline.concat(low).sort(()=>Math.random()-0.5);
       renderTrial();
-    } else {
-      finishRun(); // call the ONE global finishRun
     }
-  }
 
-  // ---------- Cloud + local save ----------
-  function makeRunId() {
-    const rnd = Math.random().toString(36).slice(2, 8);
-    return `run_${Date.now()}_${rnd}`;
-  }
+    function renderTrial(){
+      const tr = stimuli[trialIndex];
+      document.getElementById('experiment').innerHTML = `
+        <div style="text-align:center">
+          <div class="circle" style="background:${tr.color};"></div>
+          <div class="flex">
+            <button class="primary-btn" onclick="recordResponse('blue')">Blue</button>
+            <button class="primary-btn" onclick="recordResponse('not-blue')">Not Blue</button>
+          </div>
+          <p class="muted" style="margin-top:.9rem;">Trial ${trialIndex+1} of ${stimuli.length}</p>
+        </div>`;
+    }
 
-  async function saveRunToCloud(run) {
-    const res = await fetch(GS_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(run)
-    });
-    if (!res.ok) throw new Error('Upload failed');
-    return res.json();
-  }
+    function recordResponse(response){
+      const tr = stimuli[trialIndex];
+      responses.push({ t: tr.t, color: tr.color, prevalence: tr.prevalence, response });
+      trialIndex++;
+      if (trialIndex < stimuli.length) renderTrial();
+      else finishRun();
+    }
 
-  async function fetchAllRows() {
-    const res = await fetch(GS_ENDPOINT, { method: 'GET' });
-    if (!res.ok) throw new Error('Fetch failed');
-    const data = await res.json();
-    return data.rows || [];
-  }
+    // ---------- Cloud + local ----------
+    function makeRunId(){ return `run_${Date.now()}_${Math.random().toString(36).slice(2,8)}`; }
 
-  // Convert flat rows -> [{ts, trials:[...]}] runs
-  async function getAllRuns() {
-    const rows = await fetchAllRows();
-    const byRun = new Map();
-    for (const r of rows) {
-      if (!byRun.has(r.run_id)) byRun.set(r.run_id, { ts: r.ts, trials: [] });
-      byRun.get(r.run_id).trials.push({
-        t: Number(r.t),
-        prevalence: r.prevalence,
-        response: r.response,
-        color: r.color
+    async function saveRunToCloud(run){
+      // 'text/plain' avoids CORS preflight headaches with Apps Script
+      const res = await fetch(GS_ENDPOINT, {
+        method:'POST',
+        headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+        body: JSON.stringify(run)
       });
+      const text = await res.text(); // read raw
+      let data={}; try{ data = JSON.parse(text); }catch{}
+      if (!res.ok || data.ok === false) throw new Error('Upload failed: '+text);
+      return data;
     }
-    return Array.from(byRun.values());
-  }
 
-  async function finishRun() {
-  const run = { run_id: makeRunId(), ts: Date.now(), trials: responses };
+    async function fetchAllRows(){
+      const res = await fetch(GS_ENDPOINT, { method:'GET' });
+      const data = await res.json();
+      return data.rows || [];
+    }
 
-  // Local backup (optional)
-  try {
-    const local = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    local.push(run);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
-  } catch {}
-
-  // Try to upload silently — no message shown
-  try {
-    await saveRunToCloud(run);
-  } catch (e) {
-    console.warn('Sync failed:', e);
-  }
-
-  // Instantly show the dashboard
-  showDashboard();
-}
-
-
-    document.getElementById('experiment').innerHTML = `
-      <h2>Experiment Complete</h2>
-      <p>You completed ${stimuli.length} trials.</p>
-      <p class="muted">${msg}</p>
-      <div class="flex">
-        <button class="primary-btn" onclick="downloadCSV()">Download Results (CSV)</button>
-        <button class="primary-btn" onclick="showDashboard()">View Dashboard</button>
-        <button class="primary-btn" onclick="startExperiment()">Run Again</button>
-      </div>
-    `;
-
-    // Prefer cloud; fall back to local if cloud fails OR is empty
-async function refreshDashboard(){
-  let runsCloud = [];
-  try {
-    runsCloud = await getAllRuns();   // cloud (all devices)
-  } catch (e) {
-    console.warn('Cloud fetch failed, using local only:', e);
-  }
-
-  const runsLocal = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-
-  // If cloud has nothing yet, use local; otherwise merge (and de-dupe by run_id if present)
-  let runs = [];
-  if (runsCloud && runsCloud.length) {
-    const seen = new Set();
-    for (const r of runsCloud) { if (r.run_id) seen.add(r.run_id); }
-    runs = runsCloud.concat(runsLocal.filter(r => !r.run_id || !seen.has(r.run_id)));
-  } else {
-    runs = runsLocal;
-  }
-
-  const aggr = aggregate(runs);
-  renderMetrics(aggr);
-  renderBreakdowns(aggr);
-  renderChart(aggr);
-}
-
-
-  // ---------- CSV ----------
-  function downloadCSV() {
-    if (!responses.length) return;
-    const headers = ['t','color','prevalence','response'];
-    const rows = responses.map(r => [r.t, r.color, r.prevalence, r.response]);
-    const csv = [headers.join(',')].concat(rows.map(r => r.join(','))).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'experiment_results.csv';
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-
-  // ---------- Aggregation + Dashboard ----------
-  function aggregate(runs) {
-    const out = {
-      totalRuns: runs.length, totalTrials: 0,
-      overall: {TP:0,TN:0,FP:0,FN:0},
-      byBlock: { baseline:{TP:0,TN:0,FP:0,FN:0,n:0}, low:{TP:0,TN:0,FP:0,FN:0,n:0} },
-      bins: { labels:[0.0,0.2,0.4,0.6,0.8,1.0], baseline:[0,0,0,0,0,0], baselineN:[0,0,0,0,0,0],
-              low:[0,0,0,0,0,0], lowN:[0,0,0,0,0,0] }
-    };
-    const binIdx = t => Math.min(5, Math.floor(t*5 + 1e-9));
-
-    for (const run of runs) {
-      if (!run || !run.trials) continue;
-      for (const tr of run.trials) {
-        const t = Number(tr.t);
-        const saidBlue = tr.response === 'blue';
-        const truth = truthIsBlue(t);
-        const blk = tr.prevalence === 'low' ? 'low' : 'baseline';
-        out.totalTrials++;
-
-        if (truth && saidBlue) out.overall.TP++;
-        else if (!truth && !saidBlue) out.overall.TN++;
-        else if (!truth && saidBlue) out.overall.FP++;
-        else out.overall.FN++;
-
-        out.byBlock[blk].n++;
-        if (truth && saidBlue) out.byBlock[blk].TP++;
-        else if (!truth && !saidBlue) out.byBlock[blk].TN++;
-        else if (!truth && saidBlue) out.byBlock[blk].FP++;
-        else out.byBlock[blk].FN++;
-
-        const b = binIdx(t);
-        if (blk === 'low') { out.bins.low[b] += saidBlue ? 1 : 0; out.bins.lowN[b] += 1; }
-        else { out.bins.baseline[b] += saidBlue ? 1 : 0; out.bins.baselineN[b] += 1; }
+    async function getAllRuns(){
+      const rows = await fetchAllRows();
+      const byRun = new Map();
+      for (const r of rows){
+        if (!byRun.has(r.run_id)) byRun.set(r.run_id, { ts:r.ts, trials:[] , run_id:r.run_id });
+        byRun.get(r.run_id).trials.push({ t:Number(r.t), prevalence:r.prevalence, response:r.response, color:r.color });
       }
+      return Array.from(byRun.values());
     }
 
-    const acc = x => {
-      const d = x.TP + x.TN + x.FP + x.FN;
-      return d ? (x.TP + x.TN) / d : 0;
-    };
-    out.accOverall  = acc(out.overall);
-    out.accBaseline = acc(out.byBlock.baseline);
-    out.accLow      = acc(out.byBlock.low);
+    async function finishRun(){
+      const run = { run_id: makeRunId(), ts: Date.now(), trials: responses };
 
-    out.pBlueBaseline = out.bins.baseline.map((c,i)=> out.bins.baselineN[i] ? c/out.bins.baselineN[i] : 0);
-    out.pBlueLow      = out.bins.low.map((c,i)=> out.bins.lowN[i] ? c/out.bins.lowN[i] : 0);
-    return out;
-  }
+      // local backup
+      try{
+        const local = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        local.push(run);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
+      }catch{}
 
-  const pct = x => (x*100).toFixed(1) + '%';
+      // cloud upload (silent)
+      try{ await saveRunToCloud(run); }catch(e){ console.warn('Sync failed:', e); }
 
-  function renderMetrics(aggr){
-    const el = document.getElementById('metrics');
-    if (!el) return;
-    el.innerHTML = `
-      <div class="metric"><h4>Total Runs</h4><h3>${aggr.totalRuns}</h3></div>
-      <div class="metric"><h4>Total Trials</h4><h3>${aggr.totalTrials}</h3></div>
-      <div class="metric"><h4>Overall Accuracy</h4><h3>${pct(aggr.accOverall)}</h3></div>
-      <div class="metric"><h4>Baseline Accuracy</h4><h3>${pct(aggr.accBaseline)}</h3></div>
-      <div class="metric"><h4>Low-Prev Accuracy</h4><h3>${pct(aggr.accLow)}</h3></div>
-    `;
-  }
+      // go straight to dashboard
+      showDashboard();
+    }
 
-  function renderBreakdowns(aggr){
-    const b = aggr.byBlock.baseline, l = aggr.byBlock.low;
-    document.getElementById('b_tp').textContent = `True Positives: ${b.TP}`;
-    document.getElementById('b_tn').textContent = `True Negatives: ${b.TN}`;
-    document.getElementById('b_fp').textContent = `False Positives: ${b.FP}`;
-    document.getElementById('b_fn').textContent = `False Negatives: ${b.FN}`;
-    document.getElementById('l_tp').textContent = `True Positives: ${l.TP}`;
-    document.getElementById('l_tn').textContent = `True Negatives: ${l.TN}`;
-    document.getElementById('l_fp').textContent = `False Positives: ${l.FP}`;
-    document.getElementById('l_fn').textContent = `False Negatives: ${l.FN}`;
-  }
+    // ---------- CSV ----------
+    function downloadCSV(){
+      if (!responses.length) return;
+      const headers = ['t','color','prevalence','response'];
+      const rows = responses.map(r => [r.t, r.color, r.prevalence, r.response]);
+      const csv = [headers.join(',')].concat(rows.map(r=>r.join(','))).join('\n');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+      a.download = 'experiment_results.csv';
+      a.click();
+    }
 
-  function renderChart(aggr){
-    const ctx = document.getElementById('lineChart')?.getContext('2d');
-    if (!ctx) return;
-    const data = {
-      labels: [0.0,0.2,0.4,0.6,0.8,1.0],
-      datasets: [
-        { label:'Baseline', data: aggr.pBlueBaseline, borderColor:'blue',   fill:false, tension:.35 },
-        { label:'Low Prevalence', data: aggr.pBlueLow, borderColor:'purple', fill:false, tension:.35 }
-      ]
-    };
-    const options = {
-      plugins:{ title:{ display:true, text:'P(judged BLUE) across t — aggregated over all saved runs' } },
-      scales:{
-        x:{ title:{ display:true, text:'Stimulus continuum t (0=blue, 1=purple)' } },
-        y:{ title:{ display:true, text:'P(judged BLUE)' }, min:0, max:1 }
+    // ---------- Aggregation + Dashboard ----------
+    function aggregate(runs){
+      const out = {
+        totalRuns:runs.length, totalTrials:0,
+        overall:{TP:0,TN:0,FP:0,FN:0},
+        byBlock:{ baseline:{TP:0,TN:0,FP:0,FN:0,n:0}, low:{TP:0,TN:0,FP:0,FN:0,n:0} },
+        bins:{ labels:[0.0,0.2,0.4,0.6,0.8,1.0], baseline:[0,0,0,0,0,0], baselineN:[0,0,0,0,0,0],
+               low:[0,0,0,0,0,0], lowN:[0,0,0,0,0,0] }
+      };
+      const binIdx = t => Math.min(5, Math.floor(t*5 + 1e-9));
+
+      for (const run of runs){
+        if (!run || !run.trials) continue;
+        for (const tr of run.trials){
+          const t = Number(tr.t), saidBlue = tr.response === 'blue', truth = truthIsBlue(t);
+          const blk = tr.prevalence === 'low' ? 'low' : 'baseline';
+          out.totalTrials++;
+          if (truth && saidBlue) out.overall.TP++; else
+          if (!truth && !saidBlue) out.overall.TN++; else
+          if (!truth && saidBlue) out.overall.FP++; else out.overall.FN++;
+
+          out.byBlock[blk].n++;
+          if (truth && saidBlue) out.byBlock[blk].TP++; else
+          if (!truth && !saidBlue) out.byBlock[blk].TN++; else
+          if (!truth && saidBlue) out.byBlock[blk].FP++; else out.byBlock[blk].FN++;
+
+          const b = binIdx(t);
+          if (blk==='low'){ out.bins.low[b] += saidBlue?1:0; out.bins.lowN[b] += 1; }
+          else { out.bins.baseline[b] += saidBlue?1:0; out.bins.baselineN[b] += 1; }
+        }
       }
-    };
-    if (dashboardChart) {
-      dashboardChart.data = data;
-      dashboardChart.options = options;
-      dashboardChart.update();
-    } else {
-      dashboardChart = new Chart(ctx, { type:'line', data, options });
+      out.accOverall  = accuracy(out.overall);
+      out.accBaseline = accuracy(out.byBlock.baseline);
+      out.accLow      = accuracy(out.byBlock.low);
+      out.pBlueBaseline = out.bins.baseline.map((c,i)=> out.bins.baselineN[i] ? c/out.bins.baselineN[i] : 0);
+      out.pBlueLow      = out.bins.low.map((c,i)=> out.bins.lowN[i] ? c/out.bins.lowN[i] : 0);
+      return out;
     }
-  }
 
-  // NOTE: async now, because getAllRuns() is async
-  async function refreshDashboard(){
-    let runs = [];
-    try {
-      runs = await getAllRuns();                 // cloud (all devices)
-    } catch {
-      // fallback to local data if cloud fetch fails
-      runs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    function accuracy(x){ const d = x.TP+x.TN+x.FP+x.FN; return d? (x.TP+x.TN)/d : 0; }
+    function pct(x){ return (x*100).toFixed(1)+'%'; } // hoisted function (no TDZ issues)
+
+    function renderMetrics(aggr){
+      const el = document.getElementById('metrics'); if (!el) return;
+      el.innerHTML = `
+        <div class="metric"><h4>Total Runs</h4><h3>${aggr.totalRuns}</h3></div>
+        <div class="metric"><h4>Total Trials</h4><h3>${aggr.totalTrials}</h3></div>
+        <div class="metric"><h4>Overall Accuracy</h4><h3>${pct(aggr.accOverall)}</h3></div>
+        <div class="metric"><h4>Baseline Accuracy</h4><h3>${pct(aggr.accBaseline)}</h3></div>
+        <div class="metric"><h4>Low-Prev Accuracy</h4><h3>${pct(aggr.accLow)}</h3></div>`;
     }
-    const aggr = aggregate(runs);
-    renderMetrics(aggr);
-    renderBreakdowns(aggr);
-    renderChart(aggr);
-  }
 
-  // ---------- Init ----------
-  window.onload = () => { refreshDashboard(); };
+    function renderBreakdowns(aggr){
+      const b = aggr.byBlock.baseline, l = aggr.byBlock.low;
+      document.getElementById('b_tp').textContent = `True Positives: ${b.TP}`;
+      document.getElementById('b_tn').textContent = `True Negatives: ${b.TN}`;
+      document.getElementById('b_fp').textContent = `False Positives: ${b.FP}`;
+      document.getElementById('b_fn').textContent = `False Negatives: ${b.FN}`;
+      document.getElementById('l_tp').textContent = `True Positives: ${l.TP}`;
+      document.getElementById('l_tn').textContent = `True Negatives: ${l.TN}`;
+      document.getElementById('l_fp').textContent = `False Positives: ${l.FP}`;
+      document.getElementById('l_fn').textContent = `False Negatives: ${l.FN}`;
+    }
 
-  // Auto-refresh every 15s while dashboard is visible
-  setInterval(() => {
-    const isVisible = !document.getElementById('dashboard').classList.contains('hidden');
-    if (isVisible) refreshDashboard();
-  }, 15000);
-   // 👇 Add this at the very end (after all functions)
-  window.showExperiment  = showExperiment;
-  window.showDashboard   = showDashboard;
-  window.startExperiment = startExperiment;
-  window.recordResponse  = recordResponse;
-</script>
+    function renderChart(aggr){
+      const ctx = document.getElementById('lineChart')?.getContext('2d'); if (!ctx) return;
+      const data = {
+        labels:[0.0,0.2,0.4,0.6,0.8,1.0],
+        datasets:[
+          { label:'Baseline', data:aggr.pBlueBaseline, borderColor:'blue', fill:false, tension:.35 },
+          { label:'Low Prevalence', data:aggr.pBlueLow, borderColor:'purple', fill:false, tension:.35 }
+        ]
+      };
+      const options = {
+        plugins:{ title:{ display:true, text:'P(judged BLUE) across t — aggregated over all runs' } },
+        scales:{ x:{ title:{ display:true, text:'Stimulus continuum t (0=blue, 1=purple)'} },
+                 y:{ title:{ display:true, text:'P(judged BLUE)'}, min:0, max:1 } }
+      };
+      if (dashboardChart){ dashboardChart.data = data; dashboardChart.options = options; dashboardChart.update(); }
+      else { dashboardChart = new Chart(ctx, { type:'line', data, options }); }
+    }
 
- 
+    async function refreshDashboard(){
+      let runsCloud = [];
+      try { runsCloud = await getAllRuns(); } catch(e){ console.warn('Cloud fetch failed:', e); }
+      const runsLocal = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+      // merge: prefer cloud; add local runs not in cloud (by run_id)
+      let runs = [];
+      if (runsCloud.length){
+        const seen = new Set(runsCloud.map(r=>r.run_id).filter(Boolean));
+        runs = runsCloud.concat(runsLocal.filter(r => !r.run_id || !seen.has(r.run_id)));
+      } else {
+        runs = runsLocal;
+      }
+
+      const aggr = aggregate(runs);
+      renderMetrics(aggr);
+      renderBreakdowns(aggr);
+      renderChart(aggr);
+    }
+
+    // ---------- Init & globals for inline onclick ----------
+    window.onload = () => { refreshDashboard(); };
+    setInterval(() => {
+      const isVisible = !document.getElementById('dashboard').classList.contains('hidden');
+      if (isVisible) refreshDashboard();
+    }, 15000);
+
+    // expose handlers
+    window.showExperiment  = showExperiment;
+    window.showDashboard   = showDashboard;
+    window.startExperiment = startExperiment;
+    window.recordResponse  = recordResponse;
+    window.downloadCSV     = downloadCSV;
+  </script>
+</body>
+</html>
