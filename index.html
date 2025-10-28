@@ -159,10 +159,12 @@
       const stimuli = [];
 
       function generateColor(t) {
-        const r = Math.round(0 + t * (128 - 0));
-        const g = Math.round(128 - t * (128 - 0));
-        const b = 255;
-        return `rgb(${r},${g},${b})`;
+  const r = Math.round(255 * t); // from 0 (blue) to 255 (purple)
+  const g = 0;
+  const b = 255;
+  return `rgb(${r},${g},${b})`;
+},${g},${b})`;
+
       }
 
       for (let i = 0; i < baselineCount; i++) {
