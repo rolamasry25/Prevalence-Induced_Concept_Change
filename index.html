@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Prevalence-Induced Concept Change</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 2rem;
+    }
+    #experiment {
+      margin-top: 2rem;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Concept Classification Test</h1>
+  <p>Decide whether the shown item belongs to the category.</p>
+  <button onclick="startExperiment()">Start</button>
+
+  <div id="experiment"></div>
+
+  <script>
+    const stimuli = [
+      { word: "Blue dot", category: true },
+      { word: "Purple dot", category: true },
+      { word: "Red dot", category: false },
+      { word: "Pink dot", category: false },
+      { word: "Dark blue dot", category: true },
+      { word: "Light purple dot", category: false },
+      { word: "Indigo dot", category: false },
+    ];
+
+    let currentIndex = 0;
+
+    function startExperiment() {
+      currentIndex = 0;
+      document.querySelector("#experiment").innerHTML = "";
+      showNextStimulus();
+    }
+
+    function showNextStimulus() {
+      if (currentIndex >= stimuli.length) {
+        document.querySelector("#experiment").innerHTML = "<p>Test complete! Thank you.</p>";
+        return;
+      }
+
+      const current = stimuli[currentIndex];
+      const div = document.querySelector("#experiment");
+      div.innerHTML = `
+        <p><strong>${current.word}</strong></p>
+        <button onclick="respond(true)">Yes</button>
+        <button onclick="respond(false)">No</button>
+      `;
+    }
+
+    function respond(response) {
+      const correct = response === stimuli[currentIndex].category;
+      console.log(`Stimulus: ${stimuli[currentIndex].word}, Response: ${response}, Correct: ${correct}`);
+      currentIndex++;
+      showNextStimulus();
+    }
+  </script>
+</body>
+</html>
