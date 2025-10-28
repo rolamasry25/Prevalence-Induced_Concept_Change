@@ -271,7 +271,6 @@ async function refreshDashboard(){
   renderChart(aggr);
 }
 
-  }
 
   // ---------- CSV ----------
   function downloadCSV() {
@@ -412,6 +411,11 @@ async function refreshDashboard(){
     const isVisible = !document.getElementById('dashboard').classList.contains('hidden');
     if (isVisible) refreshDashboard();
   }, 15000);
+   // 👇 Add this at the very end (after all functions)
+  window.showExperiment  = showExperiment;
+  window.showDashboard   = showDashboard;
+  window.startExperiment = startExperiment;
+  window.recordResponse  = recordResponse;
 </script>
 
  
