@@ -3,31 +3,51 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Concept Classification Test</title>
+  <title>Concept Change Study</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      background: #f4f4f4;
       margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f9fafc;
+      color: #333;
+    }
+    nav {
+      background: #0d6efd;
+      padding: 1rem 2rem;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+    }
+    nav span.logo {
+      font-size: 1.2rem;
+    }
+    nav a {
+      color: white;
+      margin-left: 1rem;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    main {
+      display: flex;
       flex-direction: column;
+      align-items: center;
+      padding: 2rem;
     }
     .dot {
-      width: 200px;
-      height: 200px;
+      width: 150px;
+      height: 150px;
       border-radius: 50%;
-      margin: 30px auto;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      margin: 40px auto;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
     }
     .button-group button {
-      background-color: #007bff;
+      background-color: #0d6efd;
       color: white;
       border: none;
-      padding: 12px 24px;
+      padding: 12px 28px;
       font-size: 16px;
       border-radius: 8px;
       margin: 10px;
@@ -35,45 +55,83 @@
       transition: background-color 0.3s ease;
     }
     .button-group button:hover {
-      background-color: #0056b3;
+      background-color: #0a58ca;
+    }
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 1rem 2rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      margin: 20px 0;
+      width: 100%;
+      max-width: 800px;
+    }
+    .card h2 {
+      margin-top: 0;
+    }
+    canvas {
+      margin-top: 2rem;
+      max-width: 800px;
+    }
+    .dashboard-metrics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      margin: 2rem 0;
+    }
+    .metric {
+      background: white;
+      border-radius: 8px;
+      padding: 1rem 2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      min-width: 180px;
+      text-align: center;
+    }
+    .metric h3 {
+      margin: 0.5rem 0;
     }
     .hidden { display: none; }
-    canvas { margin-top: 30px; }
-    #dashboardBtn {
-      background: #28a745;
+    .primary-btn {
       padding: 10px 20px;
-      color: #fff;
-      border-radius: 6px;
+      background: #198754;
+      color: white;
       border: none;
-      margin-top: 30px;
+      border-radius: 6px;
+      font-size: 16px;
       cursor: pointer;
-    }
-    .dashboard-section {
-      background: #fff;
-      padding: 2rem;
-      border-radius: 10px;
-      margin: 20px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.1);
     }
   </style>
 </head>
 <body>
-  <h1>Prevalence-Induced Concept Change</h1>
-  <div id="experiment">
-    <button onclick="startExperiment()">Start</button>
-  </div>
-  <button id="dashboardBtn" onclick="showDashboard()">View Dashboard</button>
-  <canvas id="resultChart" class="hidden" width="400" height="200"></canvas>
-  <div id="dashboard" class="hidden dashboard-section"></div>
+  <nav>
+    <span class="logo">🔬 Concept Change Study</span>
+    <div>
+      <a href="#" onclick="startExperiment()">Experiment</a>
+      <a href="#" onclick="showDashboard()">Dashboard</a>
+    </div>
+  </nav>
+  <main>
+    <div id="experiment" class="card">
+      <h2>Welcome to the Concept Change Experiment</h2>
+      <p>Click below to begin classifying blue vs non-blue colors.</p>
+      <button class="primary-btn" onclick="startExperiment()">Start Experiment</button>
+    </div>
+
+    <canvas id="resultChart" class="hidden"></canvas>
+    <canvas id="lineChart" class="hidden"></canvas>
+
+    <div id="dashboard" class="hidden card"></div>
+  </main>
 
   <script>
     const baseColors = [
-      { name: "blue", code: "#0000FF", category: true },
-      { name: "royalblue", code: "#4169E1", category: true },
-      { name: "mediumslateblue", code: "#7B68EE", category: true },
-      { name: "blueviolet", code: "#8A2BE2", category: false },
-      { name: "mediumorchid", code: "#BA55D3", category: false },
-      { name: "purple", code: "#800080", category: false }
+      { name: "blue", code: "#0000FF", category: true, t: 0 },
+      { name: "royalblue", code: "#4169E1", category: true, t: 0.2 },
+      { name: "mediumslateblue", code: "#7B68EE", category: true, t: 0.4 },
+      { name: "blueviolet", code: "#8A2BE2", category: false, t: 0.6 },
+      { name: "mediumorchid", code: "#BA55D3", category: false, t: 0.8 },
+      { name: "purple", code: "#800080", category: false, t: 1 }
     ];
 
     let trials = [];
@@ -85,13 +143,14 @@
       currentIndex = 0;
       block = 'Baseline';
       document.getElementById('resultChart').classList.add('hidden');
+      document.getElementById('lineChart').classList.add('hidden');
       document.getElementById('dashboard').classList.add('hidden');
       showNext();
     }
 
     function showNext() {
       if (currentIndex >= 60) {
-        showChart();
+        showResults();
         return;
       }
 
@@ -99,41 +158,47 @@
 
       let stimulus;
       if (block === 'Baseline') {
-        stimulus = baseColors[Math.floor(Math.random() * 6)];
+        stimulus = baseColors[Math.floor(Math.random() * baseColors.length)];
       } else {
-        // 10% blue in low prevalence
-        stimulus = Math.random() < 0.1 ? baseColors[Math.floor(Math.random() * 3)] : baseColors[Math.floor(Math.random() * 3) + 3];
+        stimulus = Math.random() < 0.1
+          ? baseColors[Math.floor(Math.random() * 3)]
+          : baseColors[Math.floor(Math.random() * 3) + 3];
       }
 
       const container = document.getElementById('experiment');
       container.innerHTML = `
+        <h2>Trial ${currentIndex + 1} of 60</h2>
         <div class="dot" style="background-color: ${stimulus.code};"></div>
         <div class="button-group">
-          <button onclick="recordResponse(true, '${stimulus.name}', ${stimulus.category}, '${block}')">Blue</button>
-          <button onclick="recordResponse(false, '${stimulus.name}', ${stimulus.category}, '${block}')">Not Blue</button>
+          <button onclick="recordResponse(true, '${stimulus.name}', ${stimulus.category}, '${block}', ${stimulus.t})">Blue</button>
+          <button onclick="recordResponse(false, '${stimulus.name}', ${stimulus.category}, '${block}', ${stimulus.t})">Not Blue</button>
         </div>
-        <p><strong>Block:</strong> ${block}<br><strong>Trial ${currentIndex + 1} of 60</strong></p>
+        <p><strong>Block:</strong> ${block}</p>
       `;
     }
 
-    function recordResponse(userResponse, colorName, isBlue, blockType) {
+    function recordResponse(userResponse, colorName, isBlue, blockType, t) {
       trials.push({
         color: colorName,
         isBlue: isBlue,
         response: userResponse,
         correct: userResponse === isBlue,
         block: blockType,
+        t: t,
         timestamp: new Date().toISOString()
       });
       currentIndex++;
       showNext();
     }
 
-    function showChart() {
+    function showResults() {
       const container = document.getElementById('experiment');
-      container.innerHTML = `<p>Experiment complete! See results below.</p>`;
+      container.innerHTML = `<h2>Experiment complete!</h2><p>Results below:</p>`;
+
       const ctx = document.getElementById('resultChart');
-      document.getElementById('resultChart').classList.remove('hidden');
+      const ctx2 = document.getElementById('lineChart');
+      ctx.classList.remove('hidden');
+      ctx2.classList.remove('hidden');
 
       const blocks = { Baseline: [], "Low Prevalence": [] };
       trials.forEach(t => blocks[t.block].push(t.correct));
@@ -144,80 +209,98 @@
       new Chart(ctx, {
         type: 'bar',
         data: {
-          labels: ['Baseline (50% Blue)', 'Low Prevalence (10% Blue)'],
+          labels: ['Baseline (50%)', 'Low Prevalence (10%)'],
           datasets: [{
             label: 'Accuracy (%)',
             data: [baselineAcc, lowAcc],
-            backgroundColor: ['#007bff', '#800080']
+            backgroundColor: ['#0d6efd', '#800080']
           }]
         },
+        options: { scales: { y: { beginAtZero: true, max: 100 } } }
+      });
+
+      // Create line chart P(Blue|t)
+      const byT = { Baseline: {}, "Low Prevalence": {} };
+      trials.forEach(trial => {
+        if (!(trial.t in byT[trial.block])) byT[trial.block][trial.t] = [];
+        byT[trial.block][trial.t].push(trial.response);
+      });
+
+      const labels = [0,0.2,0.4,0.6,0.8,1];
+      const baselineData = labels.map(t => avg(byT["Baseline"][t] || []));
+      const lowPrevData = labels.map(t => avg(byT["Low Prevalence"][t] || []));
+
+      new Chart(ctx2, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'Baseline', data: baselineData, borderColor: '#0d6efd', fill: false },
+            { label: 'Low Prevalence', data: lowPrevData, borderColor: '#800080', fill: false }
+          ]
+        },
         options: {
-          scales: { y: { beginAtZero: true, max: 100 } },
-          plugins: { legend: { display: false } }
+          plugins: {
+            title: {
+              display: true,
+              text: 'P(judged BLUE) across color continuum (0=blue to 1=purple)'
+            }
+          },
+          scales: {
+            y: { beginAtZero: true, max: 1 },
+            x: { title: { display: true, text: 'Color t-value' } }
+          }
         }
       });
 
-      // Save results to localStorage or optionally send to backend later
+      // Save data
       const saved = localStorage.getItem('concept_trials') || "[]";
       const all = JSON.parse(saved);
       all.push(trials);
       localStorage.setItem('concept_trials', JSON.stringify(all));
     }
 
+    function avg(arr) {
+      if (arr.length === 0) return null;
+      return arr.filter(Boolean).length / arr.length;
+    }
+
     function showDashboard() {
       const all = JSON.parse(localStorage.getItem('concept_trials') || "[]");
-      if (all.length === 0) {
-        alert("No data available yet.");
-        return;
-      }
-      let baselineCorrect = 0, lowCorrect = 0, baselineTotal = 0, lowTotal = 0;
+      if (all.length === 0) return alert("No data yet.");
 
-      all.forEach(session => {
-        session.forEach(t => {
-          if (t.block === 'Baseline') {
-            baselineTotal++;
-            if (t.correct) baselineCorrect++;
-          } else {
-            lowTotal++;
-            if (t.correct) lowCorrect++;
-          }
-        });
-      });
+      let total = 0, correct = 0, base = 0, baseC = 0, low = 0, lowC = 0;
+      all.forEach(sess => sess.forEach(t => {
+        total++;
+        if (t.correct) correct++;
+        if (t.block === 'Baseline') { base++; if (t.correct) baseC++; }
+        else { low++; if (t.correct) lowC++; }
+      }));
 
-      const accBaseline = (baselineCorrect / baselineTotal * 100).toFixed(1);
-      const accLow = (lowCorrect / lowTotal * 100).toFixed(1);
-      const dashboard = document.getElementById("dashboard");
-      dashboard.classList.remove("hidden");
-      dashboard.innerHTML = `
-        <h2>Dashboard</h2>
-        <p>Total Sessions: ${all.length}</p>
-        <p>Baseline Accuracy: ${accBaseline}%</p>
-        <p>Low Prevalence Accuracy: ${accLow}%</p>
-        <button onclick="exportCSV()">Export All Data (CSV)</button>
+      const html = `
+        <div class="dashboard-metrics">
+          <div class="metric"><div>Total Participants</div><h3>${all.length}</h3></div>
+          <div class="metric"><div>Overall Accuracy</div><h3>${(correct/total*100).toFixed(1)}%</h3></div>
+          <div class="metric"><div>Baseline Accuracy</div><h3>${(baseC/base*100).toFixed(1)}%</h3></div>
+          <div class="metric"><div>Low-Prev Accuracy</div><h3>${(lowC/low*100).toFixed(1)}%</h3></div>
+        </div>
+        <button class="primary-btn" onclick="exportCSV()">Export All Data</button>
       `;
+      const dash = document.getElementById("dashboard");
+      dash.innerHTML = html;
+      dash.classList.remove("hidden");
     }
 
     function exportCSV() {
       const all = JSON.parse(localStorage.getItem('concept_trials') || "[]");
-      const rows = [['SessionID','Color','IsBlue','Response','Correct','Block','Timestamp']];
-      all.forEach((session, index) => {
-        session.forEach(trial => {
-          rows.push([
-            index + 1,
-            trial.color,
-            trial.isBlue,
-            trial.response,
-            trial.correct,
-            trial.block,
-            trial.timestamp
-          ]);
-        });
-      });
-      const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
-      const encodedUri = encodeURI(csvContent);
+      const rows = [['Session','Color','IsBlue','Response','Correct','Block','t','Timestamp']];
+      all.forEach((session, sid) => session.forEach(t => rows.push([
+        sid+1, t.color, t.isBlue, t.response, t.correct, t.block, t.t, t.timestamp
+      ])));
+      const csv = "data:text/csv;charset=utf-8," + rows.map(r => r.join(",")).join("\n");
       const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", "concept_change_data.csv");
+      link.setAttribute("href", encodeURI(csv));
+      link.setAttribute("download", "concept_trials.csv");
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
