@@ -1,84 +1,51 @@
-<!-- globally defined button logic -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Concept Change Study</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: #f9fafc;
-      color: #333;
-    }
+    :root { --brand: #0d6efd; --ok:#198754; --bg:#f9fafc; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color:#333; }
     nav {
-      background: #0d6efd;
-      padding: 1rem 2rem;
-      color: white;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: bold;
+      background: var(--brand); color:#fff; padding:1rem 2rem;
+      display:flex; justify-content:space-between; align-items:center; font-weight:600;
     }
-    nav span.logo {
-      font-size: 1.2rem;
-    }
-    nav a {
-      color: white;
-      margin-left: 1rem;
-      text-decoration: none;
-      font-weight: 500;
-      cursor: pointer;
-    }
-    main {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 2rem;
-    }
+    nav a { color:#fff; margin-left:1rem; text-decoration:none; cursor:pointer; font-weight:500; }
+    nav a:hover { text-decoration:underline; }
+    main { display:flex; flex-direction:column; align-items:center; padding:2rem 1rem; }
     .card {
-      background: white;
-      border-radius: 10px;
-      padding: 1rem 2rem;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      margin: 20px 0;
-      width: 100%;
-      max-width: 800px;
+      background:#fff; border-radius:12px; padding:1.25rem 1.5rem;
+      box-shadow:0 4px 14px rgba(0,0,0,.1); width:100%; max-width:960px;
     }
     .dashboard-metrics {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      justify-content: center;
-      margin: 2rem 0;
+      display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr));
+      gap:16px; margin: 1rem 0 1.25rem;
     }
     .metric {
-      background: white;
-      border-radius: 8px;
-      padding: 1rem 2rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      min-width: 180px;
-      text-align: center;
+      background:#fff; border-radius:10px; padding:1rem 1rem;
+      box-shadow:0 2px 10px rgba(0,0,0,.08); text-align:center;
     }
-    .metric h3 {
-      margin: 0.5rem 0;
-    }
-    canvas {
-      margin-top: 2rem;
-      max-width: 800px;
-    }
+    .metric h4 { margin:.25rem 0 0; font-weight:600; font-size:.95rem; color:#555; }
+    .metric h3 { margin:.25rem 0 .1rem; font-size:1.25rem; }
     .primary-btn {
-      padding: 10px 20px;
-      background: #198754;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 16px;
-      cursor: pointer;
+      padding:10px 18px; background: var(--ok); color:#fff; border:none; border-radius:8px;
+      font-size:16px; cursor:pointer;
     }
-    .hidden { display: none; }
+    .primary-btn:active { transform: translateY(1px); }
+    .flex { display:flex; gap:20px; justify-content:center; align-items:center; flex-wrap:wrap; }
+    .hidden { display:none; }
+    .circle {
+      width:260px; height:260px; margin:24px auto 18px; border-radius:50%;
+      border: 4px solid rgba(0,0,0,.04);
+    }
+    .two-col { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:18px; }
+    .breakdown { display:grid; grid-template-columns:repeat(2, minmax(200px, 1fr)); gap:18px; }
+    @media (max-width:560px){ .breakdown{ grid-template-columns:1fr; } }
+    canvas { margin-top:1.25rem; max-width:100%; }
+    .muted { color:#666; font-size:.95rem; }
   </style>
 </head>
 <body>
@@ -89,193 +56,109 @@
       <a onclick="showDashboard()">Dashboard</a>
     </div>
   </nav>
+
   <main>
+    <!-- Experiment -->
     <div id="experiment" class="card">
       <h2>Welcome to the Concept Change Experiment</h2>
-      <p>Click below to begin classifying blue vs non-blue colors.</p>
+      <p class="muted">Classify each dot as <em>Blue</em> or <em>Not Blue</em>. You’ll do 60 trials (30 baseline, 30 low-prevalence).</p>
       <button class="primary-btn" onclick="startExperiment()">Start Experiment</button>
     </div>
 
+    <!-- Dashboard -->
     <div id="dashboard" class="card hidden">
       <h2>Dashboard</h2>
-      <div class="dashboard-metrics">
-        <div class="metric">
-          <h4>Total Participants</h4>
-          <h3>3</h3>
-        </div>
-        <div class="metric">
-          <h4>Overall Accuracy</h4>
-          <h3>93.9%</h3>
-        </div>
-        <div class="metric">
-          <h4>Baseline Accuracy</h4>
-          <h3>91.1%</h3>
-        </div>
-        <div class="metric">
-          <h4>Low-Prev Accuracy</h4>
-          <h3>96.7%</h3>
-        </div>
-      </div>
 
-      <canvas id="lineChart"></canvas>
+      <div class="dashboard-metrics" id="metrics"></div>
 
-      <h2>Response Classification Breakdown</h2>
-      <div style="display: flex; justify-content: space-around; flex-wrap: wrap">
-        <div>
+      <canvas id="lineChart" height="250"></canvas>
+
+      <h2 style="margin-top:1.25rem;">Response Classification Breakdown</h2>
+      <div id="breakdowns" class="breakdown">
+        <div class="metric" id="baselineBox">
           <h3>Baseline Block (50% Blue)</h3>
-          <p>True Positives: 25</p>
-          <p>True Negatives: 15</p>
-          <p>False Positives: 8</p>
-          <p>False Negatives: 0</p>
+          <p id="b_tp">True Positives: 0</p>
+          <p id="b_tn">True Negatives: 0</p>
+          <p id="b_fp">False Positives: 0</p>
+          <p id="b_fn">False Negatives: 0</p>
         </div>
-        <div>
+        <div class="metric" id="lowBox">
           <h3>Low Prevalence Block (10% Blue)</h3>
-          <p>True Positives: 4</p>
-          <p>True Negatives: 34</p>
-          <p>False Positives: 2</p>
-          <p>False Negatives: 0</p>
+          <p id="l_tp">True Positives: 0</p>
+          <p id="l_tn">True Negatives: 0</p>
+          <p id="l_fp">False Positives: 0</p>
+          <p id="l_fn">False Negatives: 0</p>
         </div>
       </div>
     </div>
   </main>
 
   <script>
+    // ---------- Globals ----------
+    const STORAGE_KEY = 'cc_runs_v1';
     let trialIndex = 0;
     let responses = [];
     let stimuli = [];
+    let dashboardChart = null;
 
+    // ---------- Nav ----------
     function showExperiment() {
       document.getElementById('experiment').classList.remove('hidden');
       document.getElementById('dashboard').classList.add('hidden');
     }
-
     function showDashboard() {
       document.getElementById('dashboard').classList.remove('hidden');
       document.getElementById('experiment').classList.add('hidden');
+      refreshDashboard();
     }
 
+    // ---------- Stimuli generation ----------
+    // t in [0,1]: 0=blue, 1=purple. We'll render rgb(r,0,255) where r = 255*t (blue→purple gradient)
     function generateColor(t) {
       const r = Math.round(255 * t);
-      const g = 0;
-      const b = 255;
-      return `rgb(${r},${g},${b})`;
+      return `rgb(${r},0,255)`;
     }
+    // Exact prevalence blocks: baseline 50% blue, low 10% blue
+    function buildBlock({n, pBlue}) {
+      const nBlue = Math.round(n * pBlue);
+      const nNotBlue = n - nBlue;
+      const arr = [];
+      // Blue: t ∈ [0,0.5]
+      for (let i = 0; i < nBlue; i++) {
+        const t = Math.random() * 0.5;           // [0, 0.5]
+        arr.push({t, color: generateColor(t)});
+      }
+      // Not blue: t ∈ (0.5,1]
+      for (let i = 0; i < nNotBlue; i++) {
+        const t = 0.5 + Math.random() * 0.5;     // (0.5, 1]
+        arr.push({t, color: generateColor(t)});
+      }
+      return arr;
+    }
+    function truthIsBlue(t){ return t <= 0.5; }
 
+    // ---------- Experiment flow ----------
     function startExperiment() {
       document.getElementById('experiment').innerHTML = '<h2>Loading experiment...</h2>';
 
-      trialIndex = 0;
-      responses = [];
-      stimuli = [];
+      trialIndex = 0; responses = []; stimuli = [];
 
-      for (let i = 0; i < 30; i++) {
-        const t = Math.random();
-        stimuli.push({ t, prevalence: 'baseline', color: generateColor(t) });
-      }
-      for (let i = 0; i < 30; i++) {
-        const t = Math.random();
-        stimuli.push({ t, prevalence: 'low', color: generateColor(t) });
-      }
+      // Baseline: 30 trials @ 50% blue
+      const baseline = buildBlock({n:30, pBlue:0.5}).map(x => ({...x, prevalence:'baseline'}));
+      // Low-prevalence: 30 trials @ 10% blue
+      const low = buildBlock({n:30, pBlue:0.10}).map(x => ({...x, prevalence:'low'}));
 
-      stimuli.sort(() => Math.random() - 0.5);
+      stimuli = baseline.concat(low).sort(() => Math.random()-0.5);
       renderTrial();
     }
 
     function renderTrial() {
-      const trial = stimuli[trialIndex];
+      const tr = stimuli[trialIndex];
       document.getElementById('experiment').innerHTML = `
-        <div style="text-align: center">
-          <div style="width: 250px; height: 250px; margin: 30px auto; border-radius: 50%; background-color: ${trial.color};"></div>
-          <div style="display: flex; justify-content: center; gap: 20px;">
-            <button onclick="recordResponse('blue')" class="primary-btn">Blue</button>
-            <button onclick="recordResponse('not-blue')" class="primary-btn">Not Blue</button>
+        <div style="text-align:center">
+          <div class="circle" style="background:${tr.color};"></div>
+          <div class="flex">
+            <button class="primary-btn" onclick="recordResponse('blue')">Blue</button>
+            <button class="primary-btn" onclick="recordResponse('not-blue')">Not Blue</button>
           </div>
-          <p style="margin-top: 1rem;">Trial ${trialIndex + 1} of ${stimuli.length}</p>
-        </div>
-      `;
-    }
-
-    function recordResponse(response) {
-      responses.push({ ...stimuli[trialIndex], response });
-      trialIndex++;
-      if (trialIndex < stimuli.length) {
-        renderTrial();
-      } else {
-        showSummary();
-      }
-    }
-
-    function showSummary() {
-      document.getElementById('experiment').innerHTML = `
-        <h2>Experiment Complete</h2>
-        <p>You completed ${stimuli.length} trials.</p>
-        <button class="primary-btn" onclick="downloadCSV()">Download Results</button>
-      `;
-    }
-
-    function downloadCSV() {
-      const headers = Object.keys(responses[0]);
-      const csv = [headers.join(',')].concat(
-        responses.map(obj => headers.map(h => obj[h]).join(','))
-      ).join('\n');
-
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'experiment_results.csv';
-      a.click();
-    }
-
-    window.onload = function () {
-      const ctx = document.getElementById('lineChart').getContext('2d');
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
-          datasets: [
-            {
-              label: 'A_baseline',
-              data: [1, 1, 1, 0.6, 0.1, 0],
-              borderColor: 'blue',
-              fill: false,
-              tension: 0.4
-            },
-            {
-              label: 'B_lowprev',
-              data: [1, 1, 1, 1, 0.25, 0],
-              borderColor: 'purple',
-              fill: false,
-              tension: 0.4
-            }
-          ]
-        },
-        options: {
-          plugins: {
-            title: {
-              display: true,
-              text: 'Prevalence-induced shift (baseline vs low prevalence)'
-            }
-          },
-          scales: {
-            x: {
-              title: {
-                display: true,
-                text: 'Stimulus continuum t (0=blue, 1=purple)'
-              }
-            },
-            y: {
-              title: {
-                display: true,
-                text: 'P(judged BLUE)'
-              },
-              min: 0,
-              max: 1
-            }
-          }
-        }
-      });
-    };
-  </script>
-</body>
-</html>
+          <p class="muted" style="margin-top:.9rem;">Trial ${t
