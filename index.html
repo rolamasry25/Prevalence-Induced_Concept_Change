@@ -310,24 +310,37 @@ stimuli = baselineShuffled.concat(lowShuffled);
     else { dashboardChart = new Chart(ctx, { type:'line', data, options }); }
   }
 
-  async function refreshDashboard(){
-    let runsCloud = [];
-    try { runsCloud = await getAllRuns(); } catch(e){ console.warn('Cloud fetch failed:', e); }
-    const runsLocal = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+async function refreshDashboard() {
+  try {
+    // Always read shared data from Google Sheets (no cache)
+    const res = await fetch(GS_ENDPOINT + '?t=' + Date.now(), { method: 'GET', cache: 'no-store' });
+    if (!res.ok) throw new Error('GET failed: ' + res.status);
+    const data = await res.json();
+    const rows = data.rows || [];
 
-    let runs = [];
-    if (runsCloud.length){
-      const seen = new Set(runsCloud.map(r=>r.run_id).filter(Boolean));
-      runs = runsCloud.concat(runsLocal.filter(r => !r.run_id || !seen.has(r.run_id)));
-    } else {
-      runs = runsLocal;
+    // Group rows by run_id -> [{run_id, ts, trials:[...]}]
+    const byRun = new Map();
+    for (const r of rows) {
+      if (!byRun.has(r.run_id)) byRun.set(r.run_id, { run_id: r.run_id, ts: r.ts, trials: [] });
+      byRun.get(r.run_id).trials.push({
+        t: Number(r.t),
+        prevalence: r.prevalence,
+        response: r.response,
+        color: r.color
+      });
     }
+    const runs = Array.from(byRun.values());
 
     const aggr = aggregate(runs);
     renderMetrics(aggr);
     renderBreakdowns(aggr);
     renderChart(aggr);
+  } catch (e) {
+    console.error('Cloud fetch failed:', e);
+    // Optional: show a tiny message or keep silent
   }
+}
+
 
   // ---------- Init & expose ----------
   window.onload = () => { refreshDashboard(); };
