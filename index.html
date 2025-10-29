@@ -197,21 +197,22 @@ stimuli = baselineShuffled.concat(lowShuffled);
     return Array.from(byRun.values());
   }
 
-  async function finishRun(){
-    const run = { run_id: makeRunId(), ts: Date.now(), trials: responses };
+ async function finishRun() {
+  const run = { run_id: makeRunId(), ts: Date.now(), trials: responses };
 
-    // local backup
-    try{
-      const local = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-      local.push(run);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
-    }catch{}
-
-    // cloud upload (silent)
-    try{ await saveRunToCloud(run); }catch(e){ console.warn('Sync failed:', e); }
-
-    showDashboard(); // jump to dashboard
+  // --- Upload only to Google Sheets ---
+  try {
+    await saveRunToCloud(run);
+    console.log('Run saved to cloud');
+  } catch (e) {
+    console.error('Cloud sync failed:', e);
+    alert('Could not sync results to Google Sheets. Please check your internet or script access.');
   }
+
+  // Jump straight to dashboard
+  showDashboard();
+}
+
 
   // ---------- CSV ----------
   function downloadCSV(){
