@@ -73,9 +73,9 @@
     </div>
   </main>
 
-  <!-- Your Google Apps Script Web App URL -->
+  <!-- Google Apps Script Web App URL -->
   <script>
-    const GS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxSab2a0grdmAZh-2AjxEfCz68pAzOYVjf-tVjZGwwaXQMjSWM-Rh_x8F1WW54VxyVY/exec';
+    const GS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbzeJN8MwdEJ_spqn5Rp5LJStcRP4F6LGjQmT6grxZodEWkTZvmCZJ0jVYMbZnpwIZZ6/exec';
   </script>
 
  <script>
@@ -169,16 +169,30 @@ stimuli = baselineShuffled.concat(lowShuffled);
   // ---------- Cloud + local ----------
   function makeRunId(){ return `run_${Date.now()}_${Math.random().toString(36).slice(2,8)}`; }
 
-  async function saveRunToCloud(run){
-    const res = await fetch(GS_ENDPOINT, {
+ async function saveRunToCloud(run){
+  const url = GS_ENDPOINT;
+  try {
+    const res = await fetch(url, {
       method:'POST',
-      headers:{ 'Content-Type':'text/plain;charset=utf-8' }, // avoids preflight
+      // text/plain avoids CORS preflight; Apps Script accepts this fine
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
       body: JSON.stringify(run)
     });
-    const text = await res.text(); let data={}; try{ data = JSON.parse(text); }catch{}
-    if (!res.ok || data.ok === false) throw new Error('Upload failed: '+text);
-    return data;
+    const bodyText = await res.text();
+    let json = {};
+    try { json = JSON.parse(bodyText); } catch {}
+    if (!res.ok || json.ok === false) {
+      console.error('[POST]', res.status, res.statusText, bodyText);
+      throw new Error(`POST ${res.status}: ${bodyText || res.statusText}`);
+    }
+    console.log('[POST] ok', json);
+    return json;
+  } catch (err) {
+    console.error('[POST] failed', err);
+    throw err;
   }
+}
+
 
   async function fetchAllRows(){
     const res = await fetch(GS_ENDPOINT, { method:'GET' });
@@ -311,13 +325,24 @@ stimuli = baselineShuffled.concat(lowShuffled);
 
 async function refreshDashboard() {
   try {
-    // Always read shared data from Google Sheets (no cache)
-    const res = await fetch(GS_ENDPOINT + '?t=' + Date.now(), { method: 'GET', cache: 'no-store' });
+    const url = GS_ENDPOINT + '?t=' + Date.now();
+    console.log('[dashboard] GET', url);
+
+    const res = await fetch(url, { method: 'GET', cache: 'no-store' });
+    console.log('[dashboard] status', res.status, res.statusText);
+
     if (!res.ok) throw new Error('GET failed: ' + res.status);
     const data = await res.json();
-    const rows = data.rows || [];
+    console.log('[dashboard] payload keys:', Object.keys(data || {}));
+    const rows = (data && Array.isArray(data.rows)) ? data.rows : [];
+    console.log('[dashboard] rows length:', rows.length);
+    if (!rows.length) {
+      showDataNotice('No rows returned from cloud. Check Sheet/tab & deployment.');
+    } else {
+      hideDataNotice();
+    }
 
-    // Group rows by run_id -> [{run_id, ts, trials:[...]}]
+    // group rows -> runs
     const byRun = new Map();
     for (const r of rows) {
       if (!byRun.has(r.run_id)) byRun.set(r.run_id, { run_id: r.run_id, ts: r.ts, trials: [] });
@@ -329,16 +354,34 @@ async function refreshDashboard() {
       });
     }
     const runs = Array.from(byRun.values());
+    console.log('[dashboard] runs grouped:', runs.length);
 
     const aggr = aggregate(runs);
     renderMetrics(aggr);
     renderBreakdowns(aggr);
     renderChart(aggr);
   } catch (e) {
-    console.error('Cloud fetch failed:', e);
-    // Optional: show a tiny message or keep silent
+    console.error('[dashboard] Cloud fetch failed:', e);
+    showDataNotice('Could not load shared data from Google Sheets. Check access/deployment.');
   }
 }
+
+function showDataNotice(msg){
+  let el = document.getElementById('dataNotice');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'dataNotice';
+    el.style.cssText = 'position:fixed;right:12px;bottom:12px;padding:8px 12px;border-radius:8px;font:12px system-ui;background:#fff3cd;border:1px solid #ffe69c;color:#664d03;box-shadow:0 2px 8px rgba(0,0,0,.08);z-index:1001;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideDataNotice(){
+  const el = document.getElementById('dataNotice');
+  if (el) el.style.display = 'none';
+}
+
 
 
   // ---------- Init & expose ----------
