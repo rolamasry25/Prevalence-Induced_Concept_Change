@@ -3,8 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Concept Change Study</title>
+  <title>Ethical Evaluation Study</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="dataset.js"></script>
+  <!-- Firebase SDK -->
+  <script src="/__/firebase/8.10.1/firebase-app.js"></script>
+  <script src="/__/firebase/8.10.1/firebase-firestore.js"></script>
+  <script src="/__/firebase/init.js"></script>
   <style>
     :root { --brand:#0d6efd; --ok:#198754; --bg:#f9fafc; }
     * { box-sizing:border-box; }
@@ -22,29 +27,110 @@
     .primary-btn:active { transform:translateY(1px); }
     .flex { display:flex; gap:20px; justify-content:center; align-items:center; flex-wrap:wrap; }
     .hidden { display:none; }
-    .circle { width:260px; height:260px; margin:24px auto 18px; border-radius:50%; border:4px solid rgba(0,0,0,.04); }
+    .text-box { width:100%; min-height:150px; margin:24px auto 18px; border-radius:8px; border:1px solid rgba(0,0,0,.1); padding:1rem; font-size:1.1rem; line-height:1.6; }
+    .rating-scale { display:flex; justify-content:center; gap:10px; margin-top:1rem; }
+    .rating-btn { padding:10px 20px; border:1px solid #ccc; border-radius:8px; cursor:pointer; background:#fff; }
+    .rating-btn:hover { background:#f0f0f0; }
     .breakdown { display:grid; grid-template-columns:repeat(2,minmax(220px,1fr)); gap:18px; }
     @media (max-width:560px){ .breakdown{ grid-template-columns:1fr; } }
     canvas { margin-top:1.25rem; max-width:100%; }
-    #lineChart { pointer-events:none; }
+    #lineChart, #rtChart { pointer-events:none; }
     .muted { color:#666; font-size:.95rem; }
+    #admin-table { width:100%; border-collapse:collapse; margin-top:1rem; }
+    #admin-table th, #admin-table td { border:1px solid #ddd; padding:8px; text-align:left; }
+    #admin-table th { background-color:#f2f2f2; }
   </style>
 </head>
 <body>
   <nav>
-    <span class="logo">🔬 Concept Change Study</span>
+    <span class="logo">🔬 Ethical Evaluation Study</span>
     <div>
       <a onclick="showExperiment()">Experiment</a>
       <a onclick="showDashboard()">Dashboard</a>
+      <a onclick="showAdmin()">Admin</a>
     </div>
   </nav>
+<!-- Consent -->
+<div id="consent" class="card">
+  <h2>Consent Form</h2>
+  <p class="muted">
+    You are invited to take part in a short study on ethical evaluations.
+    Your participation is voluntary and anonymous. You may stop at any time.
+    No personal information will be collected.
+  </p>
+  <ul style="margin-left:1.25rem">
+    <li>You will be shown 76 short texts to evaluate.</li>
+    <li>No identifying data stored</li>
+    <li>Press “I Agree” to begin</li>
+  </ul>
+  <div class="flex" style="margin-top:1rem">
+    <button class="primary-btn" onclick="startExperiment()">I Agree & Start</button>
+  </div>
+</div>
 
-  <main>
-    <!-- Experiment -->
-    <div id="experiment" class="card">
-      <h2>Welcome to the Concept Change Experiment</h2>
-      <p class="muted">Classify each dot as <em>Blue</em> or <em>Not Blue</em>. You’ll do 60 trials (30 baseline, 30 low-prevalence).</p>
-      <button class="primary-btn" onclick="startExperiment()">Start Experiment</button>
+
+<main>
+<!-- Consent (new) -->
+<div id="consent" class="card">
+  <h2>Consent Form</h2>
+  <p class="muted">
+    You are invited to take part in a short study on ethical evaluations.
+    Participation is voluntary and anonymous. You may stop at any time.
+  </p>
+  <ul style="margin-left:1.25rem">
+    <li>Approx. duration: 8–10 minutes</li>
+    <li>No identifying data stored</li>
+    <li>Press “I Agree” to begin</li>
+  </ul>
+  <div class="flex" style="margin-top:1rem">
+    <button class="primary-btn" onclick="startExperiment()">I Agree & Start</button>
+  </div>
+</div>
+
+<!-- Experiment (now hidden initially; no start button) -->
+<div id="experiment" class="card hidden"></div>
+
+<!-- Debrief (new) -->
+<div id="debrief" class="card hidden">
+  <h2>Debrief</h2>
+  <p class="muted">
+    Thanks! This study examines how judgments shift when the prevalence of
+    unethical examples decreases (prevalence-induced concept change).
+  </p>
+  <div class="flex" style="margin-top:1rem">
+    <button class="primary-btn" onclick="showDashboard()">View Dashboard</button>
+  </div>
+</div>
+
+
+  
+  
+
+    <!-- Personal Summary -->
+    <div id="personal-summary" class="card hidden">
+      <h2>Your Results</h2>
+      <div class="dashboard-metrics">
+        <div class="metric">
+          <h4>Your Average Rating</h4>
+          <h3 id="personal-avg"></h3>
+        </div>
+        <div class="metric">
+          <h4>Global Average Rating</h4>
+          <h3 id="global-avg"></h3>
+        </div>
+      </div>
+      <div class="metric">
+        <h4>Your Response Distribution</h4>
+        <p id="personal-dist"></p>
+      </div>
+      <div class="metric" style="margin-top: 1rem;">
+          <h4>You vs. Others</h4>
+          <p id="group-comparison"></p>
+      </div>
+      <div class="flex" style="margin-top: 1.5rem;">
+        <button class="primary-btn" onclick="startExperiment()">Start New Experiment</button>
+        <button class="primary-btn" onclick="showDashboard()">View Global Dashboard</button>
+      </div>
     </div>
 
     <!-- Dashboard -->
@@ -53,251 +139,512 @@
       <div class="dashboard-metrics" id="metrics"></div>
       <canvas id="lineChart" height="250"></canvas>
 
-      <h2 style="margin-top:1.25rem;">Response Classification Breakdown</h2>
-      <div class="breakdown">
-        <div class="metric">
-          <h3>Baseline Block (50% Blue)</h3>
-          <p id="b_tp">True Positives: 0</p>
-          <p id="b_tn">True Negatives: 0</p>
-          <p id="b_fp">False Positives: 0</p>
-          <p id="b_fn">False Negatives: 0</p>
-        </div>
-        <div class="metric">
-          <h3>Low Prevalence Block (10% Blue)</h3>
-          <p id="l_tp">True Positives: 0</p>
-          <p id="l_tn">True Negatives: 0</p>
-          <p id="l_fp">False Positives: 0</p>
-          <p id="l_fn">False Negatives: 0</p>
-        </div>
+      <h2 style="margin-top:1.25rem;">Response Distribution</h2>
+      <div class="metric">
+        <p id="response_dist"></p>
       </div>
+      
+      <h2 style="margin-top:1.25rem;">Extreme Texts</h2>
+      <div class="dashboard-metrics">
+          <div class="metric">
+              <h4>Most Ethical Text</h4>
+              <p id="most-ethical-text" class="text-box" style="min-height: 80px; font-size: 0.9rem;"></p>
+              <h3 id="most-ethical-score"></h3>
+          </div>
+          <div class="metric">
+              <h4>Least Ethical Text</h4>
+              <p id="least-ethical-text" class="text-box" style="min-height: 80px; font-size: 0.9rem;"></p>
+              <h3 id="least-ethical-score"></h3>
+          </div>
+      </div>
+
+      <h2 style="margin-top:1.25rem;">RT Distribution</h2>
+      <div class="metric">
+          <canvas id="rtChart" height="250"></canvas>
+          <h4 style="margin-top:1rem;">Trimmed Mean RT</h4>
+          <h3 id="trimmed-mean-rt"></h3>
+      </div>
+
+      <h2 style="margin-top:1.25rem;">Per-Category Stats</h2>
+      <div id="category-stats" class="dashboard-metrics"></div>
+
+      <h2 style="margin-top:1.25rem;">Drift Alert</h2>
+      <div id="drift-alert" class="metric"></div>
+    </div>
+
+    <!-- Admin -->
+    <div id="admin" class="card hidden">
+        <h2>Admin View</h2>
+        <table id="admin-table">
+            <thead>
+                <tr>
+                    <th>Run ID</th>
+                    <th>Timestamp</th>
+                    <th>Quality Flags</th>
+                </tr>
+            </thead>
+            <tbody id="admin-table-body"></tbody>
+        </table>
     </div>
   </main>
 
   <script>
-    // ======= CONFIG: paste deployed Apps Script  URL =======
-    const GS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbypVZgj4QBpbSQvUV3Qvheyzs5ndNRwmWEHvQAYNdmNkJ8gJUUlPLC0y7_1O3HfsOOA/exec';
-    // ================================================================
-
-    // ---------- Globals ----------
-    const BASELINE_TRIALS = 30;
-    const LOW_TRIALS      = 30;
+    // Initialize Firebase
+    const db = firebase.firestore();
 
     let trialIndex = 0;
     let responses  = [];
     let stimuli    = [];
     let dashboardChart = null;
+    let rtChart = null;
+    let trialStartTime = 0;
+    let blurCount = 0;
+    let networkStatusChanges = 0;
 
-    // ---------- Nav ----------
+    window.addEventListener('blur', () => blurCount++);
+    window.addEventListener('online', () => networkStatusChanges++);
+    window.addEventListener('offline', () => networkStatusChanges++);
+
+    const STORAGE_KEY = "ethical_study_progress";
+
+    function saveProgress(){
+      const data = { trialIndex, responses };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+
+
+    function loadProgress(){
+      try {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if(data && Array.isArray(data.responses)){
+          trialIndex = data.trialIndex || 0;
+          responses  = data.responses;
+          return true;
+    
+   catch(e){ console.warn("No saved progress"); }
+      return false;
+
+
+    function clearProgress(){ localStorage.removeItem(STORAGE_KEY); }
+
     function showExperiment(){
       document.getElementById('experiment').classList.remove('hidden');
       document.getElementById('dashboard').classList.add('hidden');
-    }
+      document.getElementById('personal-summary').classList.add('hidden');
+      document.getElementById('admin').classList.add('hidden');
+
     function showDashboard(){
       document.getElementById('dashboard').classList.remove('hidden');
       document.getElementById('experiment').classList.add('hidden');
+      document.getElementById('personal-summary').classList.add('hidden');
+      document.getElementById('admin').classList.add('hidden');
       refreshDashboard();
-    }
 
-    // ---------- Stimuli ----------
-    function generateColor(t){ const r = Math.round(255*t); return `rgb(${r},0,255)`; }
-    function buildBlock({n,pBlue}){
-      const nBlue = Math.round(n*pBlue), nNotBlue = n - nBlue, arr = [];
-      for (let i=0;i<nBlue;i++){ const t = Math.random()*0.5; arr.push({t,color:generateColor(t)}); }
-      for (let i=0;i<nNotBlue;i++){ const t = 0.5 + Math.random()*0.5; arr.push({t,color:generateColor(t)}); }
-      return arr;
-    }
-    function truthIsBlue(t){ return t <= 0.5; }
+    function showAdmin(){
+      document.getElementById('admin').classList.remove('hidden');
+      document.getElementById('dashboard').classList.add('hidden');
+      document.getElementById('experiment').classList.add('hidden');
+      document.getElementById('personal-summary').classList.add('hidden');
+      renderAdminView();
+
+
     function shuffle(arr){
       const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a;
-    }
 
-    // ---------- Experiment flow ----------
+
     function startExperiment(){
-      document.getElementById('experiment').innerHTML = '<h2>Loading experiment...</h2>';
-      trialIndex = 0; responses = []; stimuli = [];
+  document.getElementById('consent').classList.add('hidden');
+  document.getElementById('experiment').classList.remove('hidden');
 
-      const baseline = buildBlock({ n: BASELINE_TRIALS, pBlue: 0.5 })
-        .map((x,i)=>({ ...x, prevalence:'baseline', seq:i+1 }));
+  // remove the old "Loading..." line if you had it
+  // document.getElementById('experiment').innerHTML = '<h2>Loading…</h2>';
 
-      const low = buildBlock({ n: LOW_TRIALS, pBlue: 0.10 })
-        .map((x,i)=>({ ...x, prevalence:'low', seq:BASELINE_TRIALS+i+1 }));
+  trialIndex = 0;
+  responses  = [];
+  stimuli    = shuffle(window.ethicalTexts).slice(0, 76).map((t,i)=>({ text:t, seq:i+1 }));
 
-      // Shuffle within each block, but keep block order
-      stimuli = shuffle(baseline).concat(shuffle(low));
+  // resume support (if you added it):
+  if(loadProgress()){
+    if(confirm(`You stopped at trial ${trialIndex+1}. Resume?`)){
+      renderTrial(); return;
+ else clearProgress();
+  }
 
-      renderTrial();
-    }
+  renderTrial();
+
+
 
     function renderTrial(){
+      trialStartTime = Date.now();
       const tr = stimuli[trialIndex];
-      const blockLabel = tr.prevalence === 'baseline' ? 'Baseline (50% blue)' : 'Low Prevalence (10% blue)';
-      const blockIndex = tr.prevalence === 'baseline' ? (trialIndex + 1) : (trialIndex + 1 - BASELINE_TRIALS);
-      const blockTotal = tr.prevalence === 'baseline' ? BASELINE_TRIALS : LOW_TRIALS;
-
+      let ratingButtons = '';
+      for (let i = 1; i <= 7; i++) {
+        ratingButtons += `<button class="rating-btn" onclick="recordResponse(${i})">${i}</button>`;
+  
       document.getElementById('experiment').innerHTML = `
         <div style="text-align:center">
-          <div class="circle" style="background:${tr.color};"></div>
-          <div class="flex">
-            <button class="primary-btn" onclick="recordResponse('blue')">Blue</button>
-            <button class="primary-btn" onclick="recordResponse('not-blue')">Not Blue</button>
+          <div class="text-box">${tr.text}</div>
+          <p class="muted">1 (Very Unethical) - 7 (Very Ethical)</p>
+          <div class="rating-scale">
+            ${ratingButtons}
           </div>
           <p class="muted" style="margin-top:.9rem;">
-            Block: <strong>${blockLabel}</strong> — Trial ${blockIndex} of ${blockTotal}
-            <br/>Overall ${trialIndex + 1} / ${stimuli.length}
+            Trial ${trialIndex + 1} / ${stimuli.length}
           </p>
         </div>`;
-    }
+
 
     function recordResponse(response){
+      const rt = Date.now() - trialStartTime;
       const tr = stimuli[trialIndex];
-      responses.push({ t: tr.t, color: tr.color, prevalence: tr.prevalence, response });
+      responses.push({ ...tr, rating: response, rt });
       trialIndex++;
-      if (trialIndex < stimuli.length) renderTrial();
-      else finishRun();
-    }
+      if (trialIndex < stimuli.length) {
+        renderTrial();
+   else {
+        finishRun();
+  
 
-    // ---------- Cloud I/O ----------
+    document.addEventListener('keydown', (e)=>{
+  const exp = document.getElementById('experiment');
+  if (!exp || exp.classList.contains('hidden')) return;
+  const n = parseInt(e.key, 10);
+  if (n >= 1 && n <= 7) recordResponse(n);
+});
+
     function makeRunId(){ return `run_${Date.now()}_${Math.random().toString(36).slice(2,8)}`; }
 
     async function saveRunToCloud(run){
-      // text/plain avoids CORS preflight with Apps Script
-      const res  = await fetch(GS_ENDPOINT, {
-        method:'POST',
-        headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-        body: JSON.stringify(run)
-      });
-      const text = await res.text();
-      let data={}; try{ data = JSON.parse(text); }catch{}
-      if (!res.ok || data.ok === false) throw new Error(`Upload failed: ${text || res.statusText}`);
-      return data;
-    }
+        try {
+            await db.collection("runs").doc(run.run_id).set(run);
+            console.log("Run saved to Firestore");
+     catch (error) {
+            console.error("Error saving run to Firestore: ", error);
+            alert("Could not sync results to Firebase. Please check your internet or Firebase setup.");
+    
+
 
     async function finishRun(){
-      const run = { run_id: makeRunId(), ts: Date.now(), trials: responses };
-      try {
-        await saveRunToCloud(run);
-        console.log('Run saved to cloud');
-      } catch (e) {
-        console.error('Cloud sync failed:', e);
-        alert('Could not sync results to Google Sheets. Please check your internet or script access.');
-      }
-      showDashboard();
-      await refreshDashboard(); // pull your latest rows immediately
-    }
+  clearProgress?.();
+  const run = { run_id: makeRunId(), ts: Date.now(), trials: responses };
+  document.getElementById('experiment').classList.add('hidden');
+  document.getElementById('debrief').classList.remove('hidden');
+}
 
-    // ---------- Dashboard (reads cloud only) ----------
-    function accuracy(x){ const d = x.TP+x.TN+x.FP+x.FN; return d? (x.TP+x.TN)/d : 0; }
-    function pct(x){ return (x*100).toFixed(1)+'%'; }
+    
+    async function showPersonalSummary(run) {
+        document.getElementById('experiment').classList.add('hidden');
+        document.getElementById('personal-summary').classList.remove('hidden');
 
-    function aggregate(runs){
-      const out = {
-        totalRuns:runs.length, totalTrials:0,
-        overall:{TP:0,TN:0,FP:0,FN:0},
-        byBlock:{ baseline:{TP:0,TN:0,FP:0,FN:0,n:0}, low:{TP:0,TN:0,FP:0,FN:0,n:0} },
-        bins:{ labels:[0.0,0.2,0.4,0.6,0.8,1.0], baseline:[0,0,0,0,0,0], baselineN:[0,0,0,0,0,0],
-               low:[0,0,0,0,0,0], lowN:[0,0,0,0,0,0] }
-      };
-      const binIdx = t => Math.min(5, Math.floor(t*5 + 1e-9));
+        // Calculate personal stats
+        const personalTotal = run.trials.reduce((sum, tr) => sum + tr.rating, 0);
+        const personalAvg = (personalTotal / run.trials.length); // Keep as float for comparison
+        const personalDist = Array(7).fill(0);
+        run.trials.forEach(tr => { personalDist[tr.rating - 1]++; });
 
-      for (const run of runs){
-        if (!run || !run.trials) continue;
-        for (const tr of run.trials){
-          const t = Number(tr.t), saidBlue = tr.response === 'blue', truth = truthIsBlue(t);
-          const blk = tr.prevalence === 'low' ? 'low' : 'baseline';
-          out.totalTrials++;
+        document.getElementById('personal-avg').textContent = personalAvg.toFixed(2);
+        document.getElementById('personal-dist').innerHTML = personalDist.map((count, i) => `<b>Rating ${i+1}:</b> ${count}`).join(', ');
 
-          if (truth && saidBlue) out.overall.TP++;
-          else if (!truth && !saidBlue) out.overall.TN++;
-          else if (!truth && saidBlue) out.overall.FP++;
-          else out.overall.FN++;
+        // Calculate global stats
+        const snapshot = await db.collection("runs").get();
+        const allRuns = snapshot.docs.map(doc => doc.data());
+        const aggr = aggregate(allRuns);
+        const globalAvg = (aggr.totalTrials > 0) ? (aggr.distribution.reduce((sum, count, i) => sum + (count * (i + 1)), 0) / aggr.totalTrials) : 0;
+        document.getElementById('global-avg').textContent = globalAvg > 0 ? globalAvg.toFixed(2) : "N/A";
 
-          out.byBlock[blk].n++;
-          if (truth && saidBlue) out.byBlock[blk].TP++;
-          else if (!truth && !saidBlue) out.byBlock[blk].TN++;
-          else if (!truth && saidBlue) out.byBlock[blk].FP++;
-          else out.byBlock[blk].FN++;
+        // Group comparison
+        const runAvgs = allRuns.map(r => {
+            if (!r.trials || r.trials.length === 0) return 0;
+            const total = r.trials.reduce((sum, tr) => sum + tr.rating, 0);
+            return total / r.trials.length;
+    ).filter(avg => avg > 0);
 
-          const b = binIdx(t);
-          if (blk==='low'){ out.bins.low[b] += saidBlue?1:0; out.bins.lowN[b] += 1; }
-          else { out.bins.baseline[b] += saidBlue?1:0; out.bins.baselineN[b] += 1; }
-        }
-      }
-      out.accOverall  = accuracy(out.overall);
-      out.accBaseline = accuracy(out.byBlock.baseline);
-      out.accLow      = accuracy(out.byBlock.low);
-      out.pBlueBaseline = out.bins.baseline.map((c,i)=> out.bins.baselineN[i] ? c/out.bins.baselineN[i] : 0);
-      out.pBlueLow      = out.bins.low.map((c,i)=> out.bins.lowN[i] ? c/out.bins.lowN[i] : 0);
-      return out;
-    }
+        if (runAvgs.length > 1) {
+            const stricterCount = runAvgs.filter(avg => avg < personalAvg).length;
+            const percentile = Math.round((stricterCount / runAvgs.length) * 100);
+            document.getElementById('group-comparison').textContent = `You were stricter than ${percentile}% of participants.`;
+     else {
+            document.getElementById('group-comparison').textContent = "Not enough data for a meaningful comparison yet.";
+    
 
-    function renderMetrics(aggr){
-      const el = document.getElementById('metrics'); if (!el) return;
-      el.innerHTML = `
-        <div class="metric"><h4>Total Runs</h4><h3>${aggr.totalRuns}</h3></div>
-        <div class="metric"><h4>Total Trials</h4><h3>${aggr.totalTrials}</h3></div>
-        <div class="metric"><h4>Overall Accuracy</h4><h3>${pct(aggr.accOverall)}</h3></div>
-        <div class="metric"><h4>Baseline Accuracy</h4><h3>${pct(aggr.accBaseline)}</h3></div>
-        <div class="metric"><h4>Low-Prev Accuracy</h4><h3>${pct(aggr.accLow)}</h3></div>`;
-    }
 
-    function renderBreakdowns(aggr){
-      const b = aggr.byBlock.baseline, l = aggr.byBlock.low;
-      document.getElementById('b_tp').textContent = `True Positives: ${b.TP}`;
-      document.getElementById('b_tn').textContent = `True Negatives: ${b.TN}`;
-      document.getElementById('b_fp').textContent = `False Positives: ${b.FP}`;
-      document.getElementById('b_fn').textContent = `False Negatives: ${b.FN}`;
-      document.getElementById('l_tp').textContent = `True Positives: ${l.TP}`;
-      document.getElementById('l_tn').textContent = `True Negatives: ${l.TN}`;
-      document.getElementById('l_fp').textContent = `False Positives: ${l.FP}`;
-      document.getElementById('l_fn').textContent = `False Negatives: ${l.FN}`;
-    }
+    function calculateQualityFlags(trials, blurCount) {
+        const flags = [];
 
-    function renderChart(aggr){
-      const ctx = document.getElementById('lineChart')?.getContext('2d'); if (!ctx) return;
-      const data = {
-        labels:[0.0,0.2,0.4,0.6,0.8,1.0],
-        datasets:[
-          { label:'Baseline', data:aggr.pBlueBaseline, borderColor:'blue',   fill:false, tension:.35 },
-          { label:'Low Prevalence', data:aggr.pBlueLow, borderColor:'purple', fill:false, tension:.35 }
+        // Duplicate reliability
+        const textRatings = {};
+        trials.forEach(tr => {
+            if (!textRatings[tr.text]) textRatings[tr.text] = [];
+            textRatings[tr.text].push(tr.rating);
+    );
+        const repeatedTexts = Object.values(textRatings).filter(ratings => ratings.length > 1);
+        if (repeatedTexts.length > 0) {
+            const correlations = repeatedTexts.map(ratings => {
+                const mean = ratings.reduce((a, b) => a + b) / ratings.length;
+                const diffs = ratings.map(r => r - mean);
+                return diffs.every(d => d === 0) ? 1 : 0; // Simplified correlation
+        );
+            const reliability = correlations.reduce((a, b) => a + b) / correlations.length;
+            if (reliability < 0.6) flags.push("low_reliability");
+    
+
+        // Catch trials (assuming 3 catch trials)
+        const catchTrials = trials.slice(-3);
+        const catchCorrect = catchTrials.reduce((acc, tr, i) => {
+            const originalTrial = trials.find(t => t.text === tr.text && t.seq !== tr.seq);
+            return acc + (originalTrial && originalTrial.rating === tr.rating ? 1 : 0);
+    , 0);
+        if (catchCorrect < 2) flags.push("failed_catch");
+
+        // Median RT
+        const rts = trials.map(tr => tr.rt).sort((a, b) => a - b);
+        const mid = Math.floor(rts.length / 2);
+        const medianRt = rts.length % 2 !== 0 ? rts[mid] : (rts[mid - 1] + rts[mid]) / 2;
+        if (medianRt < 300) flags.push("median_rt_too_low");
+        if (medianRt > 10000) flags.push("median_rt_too_high");
+
+        // Blur events
+        if (blurCount >= 10) flags.push("excessive_blur");
+
+        return flags;
+
+
+    function aggregate(runs) {
+        const out = {
+            totalRuns: runs.length,
+            totalTrials: 0,
+            distribution: Array(7).fill(0),
+            textRatings: {},
+            rts: [],
+            categoryStats: {
+                ethical: { total: 0, count: 0, correct: 0 },
+                ambiguous: { total: 0, count: 0, correct: 0 },
+                unethical: { total: 0, count: 0, correct: 0 }
+        ,
+            slopes: []
+    ;
+
+        for (const run of runs) {
+            if (!run || !run.trials) continue;
+            let xSum = 0, ySum = 0, xySum = 0, x2Sum = 0;
+            for (let i = 0; i < run.trials.length; i++) {
+                const tr = run.trials[i];
+                out.totalTrials++;
+                const rating = parseInt(tr.rating, 10);
+                if (rating >= 1 && rating <= 7) {
+                    out.distribution[rating - 1]++;
+            
+                
+                const text = tr.text;
+                if (!out.textRatings[text]) {
+                    out.textRatings[text] = { total: 0, count: 0 };
+            
+                out.textRatings[text].total += rating;
+                out.textRatings[text].count++;
+                out.rts.push(tr.rt);
+
+                if (out.categoryStats[tr.category]) {
+                    out.categoryStats[tr.category].total += rating;
+                    out.categoryStats[tr.category].count++;
+                    if ((tr.category === 'ethical' && rating > 4) || 
+                        (tr.category === 'unethical' && rating < 4)) {
+                        out.categoryStats[tr.category].correct++;
+                
+            
+
+                xSum += i;
+                ySum += rating;
+                xySum += i * rating;
+                x2Sum += i * i;
+        
+            const n = run.trials.length;
+            const slope = (n * xySum - xSum * ySum) / (n * x2Sum - xSum * xSum);
+            out.slopes.push(slope);
+    
+        return out;
+
+
+    function renderMetrics(aggr) {
+        const el = document.getElementById('metrics');
+        if (!el) return;
+        el.innerHTML = `
+            <div class="metric"><h4>Total Runs</h4><h3>${aggr.totalRuns}</h3></div>
+            <div class="metric"><h4>Total Trials</h4><h3>${aggr.totalTrials}</h3></div>
+        `;
+
+
+    function renderBreakdowns(aggr) {
+        const distEl = document.getElementById('response_dist');
+        if(distEl) {
+            distEl.innerHTML = aggr.distribution.map((count, i) => `<b>Rating ${i+1}:</b> ${count} responses`).join('<br>');
+    
+
+
+    function renderExtremeTexts(aggr) {
+        const textAvgs = Object.entries(aggr.textRatings).map(([text, data]) => ({
+            text,
+            avg: data.total / data.count
+    ));
+
+        if (textAvgs.length < 2) return;
+
+        textAvgs.sort((a, b) => b.avg - a.avg);
+        
+        const mostEthical = textAvgs[0];
+        const leastEthical = textAvgs[textAvgs.length - 1];
+
+        document.getElementById('most-ethical-text').textContent = mostEthical.text;
+        document.getElementById('most-ethical-score').textContent = `Avg: ${mostEthical.avg.toFixed(2)}`;
+        document.getElementById('least-ethical-text').textContent = leastEthical.text;
+        document.getElementById('least-ethical-score').textContent = `Avg: ${leastEthical.avg.toFixed(2)}`;
+
+
+    function renderRtChart(aggr) {
+        const ctx = document.getElementById('rtChart')?.getContext('2d');
+        if (!ctx) return;
+
+        const rtData = aggr.rts.filter(rt => rt > 150);
+        const mean = rtData.reduce((a, b) => a + b, 0) / rtData.length;
+        const stdDev = Math.sqrt(rtData.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / rtData.length);
+        const trimmedRts = rtData.filter(rt => Math.abs(rt - mean) < 3 * stdDev);
+        const trimmedMean = trimmedRts.reduce((a, b) => a + b, 0) / trimmedRts.length;
+        document.getElementById('trimmed-mean-rt').textContent = `${trimmedMean.toFixed(0)}ms`;
+
+        const histogram = Array(20).fill(0);
+        const binSize = 500;
+        trimmedRts.forEach(rt => {
+            const bin = Math.floor(rt / binSize);
+            if (bin < 20) histogram[bin]++;
+    );
+
+        const data = {
+            labels: histogram.map((_, i) => `${i * binSize}ms`),
+            datasets: [{
+                label: 'RT Distribution',
+                data: histogram,
+                backgroundColor: 'rgba(25, 135, 84, 0.5)',
+                borderColor: 'rgba(25, 135, 84, 1)',
+                borderWidth: 1
         ]
-      };
-      const options = {
-        plugins:{ title:{ display:true, text:'P(judged BLUE) across t — aggregated over all runs' } },
-        scales:{ x:{ title:{ display:true, text:'Stimulus continuum t (0=blue, 1=purple)'} },
-                 y:{ title:{ display:true, text:'P(judged BLUE)'}, min:0, max:1 } }
-      };
-      if (dashboardChart){ dashboardChart.data = data; dashboardChart.options = options; dashboardChart.update(); }
-      else { dashboardChart = new Chart(ctx, { type:'line', data, options }); }
-    }
+    ;
+        const options = {
+            scales: { y: { beginAtZero: true } },
+            plugins: { legend: { display: false } }
+    ;
+
+        if (rtChart) {
+            rtChart.data = data;
+            rtChart.options = options;
+            rtChart.update();
+     else {
+            rtChart = new Chart(ctx, { type: 'bar', data, options });
+    
+
+
+    function renderCategoryStats(aggr) {
+        const statsEl = document.getElementById('category-stats');
+        statsEl.innerHTML = '';
+        for (const category in aggr.categoryStats) {
+            const stats = aggr.categoryStats[category];
+            if (stats.count === 0) continue;
+            const avgRating = (stats.total / stats.count).toFixed(2);
+            const accuracy = (stats.correct / stats.count * 100).toFixed(1);
+            const bias = avgRating - 4;
+
+            statsEl.innerHTML += `
+                <div class="metric">
+                    <h4>${category.charAt(0).toUpperCase() + category.slice(1)}</h4>
+                    <p>Avg Rating: ${avgRating}</p>
+                    <p>Accuracy: ${accuracy}%</p>
+                    <p>Bias: ${bias.toFixed(2)}</p>
+                </div>
+            `;
+    
+
+
+    function renderDriftAlert(aggr) {
+        const driftEl = document.getElementById('drift-alert');
+        const significantSlopes = aggr.slopes.filter(slope => Math.abs(slope) > 0.01).length;
+        if (significantSlopes > aggr.totalRuns / 2) {
+            driftEl.innerHTML = `<h4>Significant Drift Detected</h4><p>More than half of participants show a significant change in ratings over time.</p>`;
+            driftEl.style.color = 'red';
+     else {
+            driftEl.innerHTML = `<h4>No Significant Drift Detected</h4>`;
+            driftEl.style.color = 'green';
+    
+
+
+    function renderChart(aggr) {
+        const ctx = document.getElementById('lineChart')?.getContext('2d');
+        if (!ctx) return;
+        const data = {
+            labels: ['1', '2', '3', '4', '5', '6', '7'],
+            datasets: [{
+                label: 'Rating Distribution',
+                data: aggr.distribution,
+                backgroundColor: 'rgba(0, 123, 255, 0.5)',
+                borderColor: 'rgba(0, 123, 255, 1)',
+                borderWidth: 1
+        ]
+    ;
+        const options = {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Number of Responses' }
+            ,
+                x: {
+                    title: { display: true, text: 'Ethical Rating' }
+            
+        ,
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: 'Distribution of Ethical Ratings' }
+        
+    ;
+        if (dashboardChart) {
+            dashboardChart.data = data;
+            dashboardChart.options = options;
+            dashboardChart.update();
+     else {
+            dashboardChart = new Chart(ctx, { type: 'bar', data, options });
+    
+
+
+    async function renderAdminView() {
+        const snapshot = await db.collection("runs").get();
+        const runs = snapshot.docs.map(doc => doc.data());
+        const tableBody = document.getElementById('admin-table-body');
+        tableBody.innerHTML = '';
+
+        runs.forEach(run => {
+            const row = tableBody.insertRow();
+            row.insertCell().textContent = run.run_id;
+            row.insertCell().textContent = new Date(run.ts).toLocaleString();
+            row.insertCell().textContent = run.qualityFlags.join(', ') || 'None';
+    );
+
 
     async function refreshDashboard(){
       try {
-        const url = GS_ENDPOINT + '?t=' + Date.now(); // cache-bust
-        const res = await fetch(url, { method:'GET', cache:'no-store' });
-        if (!res.ok) throw new Error('GET failed: ' + res.status);
-        const data = await res.json();
-        const rows = (data && Array.isArray(data.rows)) ? data.rows : [];
+        const snapshot = await db.collection("runs").get();
+        const runs = snapshot.docs.map(doc => doc.data());
 
-        if (!rows.length) showDataNotice('No rows returned from cloud. Check Sheet/tab & deployment.');
+        if (!runs.length) showDataNotice('No runs returned from cloud. Check Firestore collection.');
         else hideDataNotice();
-
-        const byRun = new Map();
-        for (const r of rows){
-          if (!byRun.has(r.run_id)) byRun.set(r.run_id, { run_id:r.run_id, ts:r.ts, trials:[] });
-          byRun.get(r.run_id).trials.push({
-            t:Number(r.t), prevalence:r.prevalence, response:r.response, color:r.color
-          });
-        }
-        const runs = Array.from(byRun.values());
+        
         const aggr = aggregate(runs);
         renderMetrics(aggr);
         renderBreakdowns(aggr);
         renderChart(aggr);
-      } catch (e) {
+        renderExtremeTexts(aggr);
+        renderRtChart(aggr);
+        renderCategoryStats(aggr);
+        renderDriftAlert(aggr);
+   catch (e) {
         console.error('[dashboard] Cloud fetch failed:', e);
-        showDataNotice('Could not load shared data from Google Sheets. Check access/deployment.');
-      }
-    }
+        showDataNotice('Could not load shared data from Firestore. Check your Firebase setup.');
+  
+
 
     function showDataNotice(msg){
       let el = document.getElementById('dataNotice');
@@ -306,25 +653,30 @@
         el.id = 'dataNotice';
         el.style.cssText = 'position:fixed;right:12px;bottom:12px;padding:8px 12px;border-radius:8px;font:12px system-ui;background:#fff3cd;border:1px solid #ffe69c;color:#664d03;box-shadow:0 2px 8px rgba(0,0,0,.08);z-index:1001;';
         document.body.appendChild(el);
-      }
+  
       el.textContent = msg;
       el.style.display = 'block';
-    }
+
     function hideDataNotice(){
       const el = document.getElementById('dataNotice');
       if (el) el.style.display = 'none';
-    }
 
-    // ---------- Init & expose ----------
-    window.onload = () => { refreshDashboard(); };
+
+    window.onload = () => { 
+        if (window.location.hash === '#admin') {
+            showAdmin();
+     else if (window.location.hash === '#dashboard') {
+            showDashboard();
+    
+;
     setInterval(() => {
       const isVisible = !document.getElementById('dashboard').classList.contains('hidden');
       if (isVisible) refreshDashboard();
-    }, 15000);
+, 15000);
 
-    // expose for inline onclick
     window.showExperiment  = showExperiment;
     window.showDashboard   = showDashboard;
+    window.showAdmin       = showAdmin;
     window.startExperiment = startExperiment;
     window.recordResponse  = recordResponse;
   </script>
